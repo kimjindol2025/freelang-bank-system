@@ -1,0 +1,291 @@
+// FreeLang 은행 시스템 - 9단계: 보안
+// Status: ⚠️ 조건부 가능 (기본 보안만)
+
+enum AuthenticationMethod {
+  PIN,
+  Password,
+  Biometric,  // 미지원
+  TwoFactor   // 미지원
+}
+
+enum EncryptionAlgorithm {
+  AES256,     // 미지원 (외부 라이브러리 필요)
+  RSA2048,    // 미지원 (외부 라이브러리 필요)
+  NONE        // 평문 (개발용)
+}
+
+struct PasswordHash {
+  hash: str,
+  salt: str,
+  algorithm: str
+}
+
+struct AuthenticationCredential {
+  username: str,
+  password_hash: PasswordHash,
+  pin: str,
+  last_login: str,
+  login_attempts: i32,
+  locked: bool
+}
+
+struct Account {
+  id: str,
+  holder_name: str,
+  balance: f64,
+  credential: AuthenticationCredential,
+  encryption_algorithm: EncryptionAlgorithm
+}
+
+impl PasswordHash {
+  // 간단한 해시 함수 (SHA256 대체용)
+  fn hash_password(password: str, salt: str) -> PasswordHash {
+    // 실제로는 bcrypt 또는 argon2 사용
+    // let hash = bcrypt::hash(&password, 12)
+
+    // 시뮬레이션: 간단한 해시 (INSECURE - 개발용만)
+    let mut hash_value = 0i32
+    for c in password.chars() {
+      hash_value = hash_value * 31 + c as i32
+    }
+
+    PasswordHash {
+      hash: format!("hash_{}", hash_value.abs()),
+      salt: salt,
+      algorithm: "simulated_sha256"
+    }
+  }
+
+  // 비밀번호 검증
+  fn verify(&self, password: str) -> bool {
+    // 실제로는 bcrypt::verify 사용
+    let input_hash = Self::hash_password(password, self.salt)
+    input_hash.hash == self.hash
+  }
+
+  // 비밀번호 강도 검증
+  fn validate_strength(password: str) -> Result<(), str> {
+    if password.length() < 8 {
+      return Err("비밀번호는 최소 8자 이상이어야 합니다".to_string())
+    }
+
+    var has_uppercase = false
+    var has_lowercase = false
+    var has_digit = false
+    var has_special = false
+
+    for c in password.chars() {
+      if c >= 'A' && c <= 'Z' { has_uppercase = true }
+      if c >= 'a' && c <= 'z' { has_lowercase = true }
+      if c >= '0' && c <= '9' { has_digit = true }
+      if "!@#$%^&*".contains(c) { has_special = true }
+    }
+
+    if !has_uppercase || !has_lowercase || !has_digit {
+      return Err("비밀번호는 대문자, 소문자, 숫자를 포함해야 합니다".to_string())
+    }
+
+    Ok(())
+  }
+}
+
+impl AuthenticationCredential {
+  fn new(username: str, password: str, pin: str) -> Result<AuthenticationCredential, str> {
+    // 비밀번호 강도 검증
+    PasswordHash::validate_strength(password)?
+
+    // PIN 검증 (4-6자리 숫자)
+    if pin.length() < 4 || pin.length() > 6 {
+      return Err("PIN은 4-6자리 숫자여야 합니다".to_string())
+    }
+
+    for c in pin.chars() {
+      if c < '0' || c > '9' {
+        return Err("PIN은 숫자만 포함해야 합니다".to_string())
+      }
+    }
+
+    Ok(AuthenticationCredential {
+      username,
+      password_hash: PasswordHash::hash_password(password, "salt_123"),
+      pin,
+      last_login: "",
+      login_attempts: 0,
+      locked: false
+    })
+  }
+
+  // 로그인 시도
+  fn authenticate(&mut self, method: AuthenticationMethod, credential: str) -> Result<str, str> {
+    if self.locked {
+      return Err("계정이 잠금 상태입니다. 관리자에 문의하세요".to_string())
+    }
+
+    let success = match method {
+      AuthenticationMethod::Password => {
+        self.password_hash.verify(credential)
+      },
+      AuthenticationMethod::PIN => {
+        credential == self.pin
+      },
+      _ => false
+    }
+
+    if success {
+      self.login_attempts = 0
+      self.last_login = "2026-03-02 10:30:00"
+      Ok(format!("✅ {}로 로그인 성공", self.username))
+    } else {
+      self.login_attempts += 1
+      if self.login_attempts >= 3 {
+        self.locked = true
+        return Err("로그인 실패 횟수 초과로 계정이 잠금되었습니다".to_string())
+      }
+      Err(format!("로그인 실패 ({}/3)", self.login_attempts))
+    }
+  }
+
+  // 비밀번호 변경
+  fn change_password(&mut self, old_password: str, new_password: str) -> Result<(), str> {
+    if !self.password_hash.verify(old_password) {
+      return Err("기존 비밀번호가 일치하지 않습니다".to_string())
+    }
+
+    PasswordHash::validate_strength(new_password)?
+
+    self.password_hash = PasswordHash::hash_password(new_password, "salt_456")
+    Ok(())
+  }
+
+  // PIN 변경
+  fn change_pin(&mut self, current_pin: str, new_pin: str) -> Result<(), str> {
+    if current_pin != self.pin {
+      return Err("현재 PIN이 일치하지 않습니다".to_string())
+    }
+
+    if new_pin.length() < 4 || new_pin.length() > 6 {
+      return Err("PIN은 4-6자리 숫자여야 합니다".to_string())
+    }
+
+    self.pin = new_pin
+    Ok(())
+  }
+}
+
+impl Account {
+  fn new(
+    id: str,
+    holder_name: str,
+    balance: f64,
+    username: str,
+    password: str,
+    pin: str
+  ) -> Result<Account, str> {
+    let credential = AuthenticationCredential::new(username, password, pin)?
+
+    Ok(Account {
+      id,
+      holder_name,
+      balance,
+      credential,
+      encryption_algorithm: EncryptionAlgorithm::NONE
+    })
+  }
+
+  // 계좌 접근 시 인증 필요
+  fn access_account(&mut self, password: str) -> Result<str, str> {
+    self.credential.authenticate(AuthenticationMethod::Password, password)
+  }
+
+  // 민감한 작업 (출금, 송금)은 PIN 필요
+  fn authorize_sensitive_operation(&mut self, pin: str) -> Result<str, str> {
+    self.credential.authenticate(AuthenticationMethod::PIN, pin)
+  }
+
+  // 거래 감시 (비정상 행동 탐지)
+  fn monitor_transaction(&self, amount: f64) -> TransactionSecurityCheck {
+    let is_large_amount = amount > self.balance * 0.5  // 잔액의 50% 이상
+    let is_unusual_time = false  // 실제로는 시간 체크
+    let is_new_beneficiary = false  // 실제로는 수취인 확인
+
+    TransactionSecurityCheck {
+      approved: !is_large_amount,
+      risk_level: if is_large_amount { "HIGH" } else { "LOW" },
+      requires_approval: is_large_amount,
+      requires_2fa: is_unusual_time || is_new_beneficiary
+    }
+  }
+
+  // 거래 기록 암호화 (시뮬레이션)
+  fn encrypt_transaction_log(&self, log: str) -> str {
+    match self.encryption_algorithm {
+      EncryptionAlgorithm::AES256 => {
+        // 실제로는 AES-256으로 암호화
+        format!("ENCRYPTED[AES256]: {}", log)
+      },
+      EncryptionAlgorithm::RSA2048 => {
+        // 실제로는 RSA-2048으로 암호화
+        format!("ENCRYPTED[RSA2048]: {}", log)
+      },
+      EncryptionAlgorithm::NONE => {
+        // 평문 (개발용)
+        log
+      }
+    }
+  }
+}
+
+struct TransactionSecurityCheck {
+  approved: bool,
+  risk_level: str,
+  requires_approval: bool,
+  requires_2fa: bool
+}
+
+// 테스트
+fn main() {
+  println("=== 보안 테스트 ===")
+
+  println("\n--- 계좌 생성 ---")
+  match Account::new("ACC-001", "김진", 1000000.0, "kim_jin", "SecurePass123!", "1234") {
+    Ok(mut account) => {
+      println("✅ 계좌 생성 완료")
+
+      println("\n--- 로그인 테스트 ---")
+      match account.access_account("SecurePass123!") {
+        Ok(msg) => println(format!("✅ {}", msg)),
+        Err(e) => println(format!("❌ {}", e))
+      }
+
+      println("\n--- 비밀번호 강도 검증 ---")
+      match PasswordHash::validate_strength("weak") {
+        Ok(()) => println("✅ 비밀번호 강도 검증 통과"),
+        Err(e) => println(format!("❌ {}", e))
+      }
+
+      println("\n--- 민감한 작업 인증 (PIN) ---")
+      match account.authorize_sensitive_operation("1234") {
+        Ok(msg) => println(format!("✅ {}", msg)),
+        Err(e) => println(format!("❌ {}", e))
+      }
+
+      println("\n--- 잘못된 PIN 시도 (3회 초과) ---")
+      for i in 1..4 {
+        match account.authorize_sensitive_operation("9999") {
+          Ok(msg) => println(format!("✅ {}", msg)),
+          Err(e) => println(format!("❌ {}", e))
+        }
+      }
+
+      println("\n--- 거래 보안 감시 ---")
+      let check = account.monitor_transaction(600000.0)
+      println(format!("위험 수준: {}", check.risk_level))
+      println(format!("승인 필요: {}", check.requires_approval))
+
+      println("\n--- 거래 기록 암호화 ---")
+      let encrypted = account.encrypt_transaction_log("김진이 100,000원을 출금했습니다")
+      println(format!("암호화된 기록: {}", encrypted))
+    },
+    Err(e) => println(format!("❌ 계좌 생성 실패: {}", e))
+  }
+}

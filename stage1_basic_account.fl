@@ -1,0 +1,124 @@
+// FreeLang 은행 시스템 - 1단계: 기본 계좌
+// Status: ✅ 완전히 가능
+
+// 계좌 타입 정의
+struct Account {
+  id: str,
+  holder_name: str,
+  balance: f64,
+  account_type: str  // "savings" 또는 "checking"
+}
+
+// 계좌 메서드 구현
+impl Account {
+  // 새 계좌 생성
+  fn new(id: str, holder_name: str, account_type: str) -> Account {
+    Account {
+      id,
+      holder_name,
+      balance: 0.0,
+      account_type
+    }
+  }
+
+  // 입금
+  fn deposit(&mut self, amount: f64) -> Result<str, str> {
+    if amount <= 0.0 {
+      return Err("입금액은 0보다 커야 합니다".to_string())
+    }
+    self.balance += amount
+    Ok(format!("{}원 입금 완료. 잔액: {}", amount, self.balance))
+  }
+
+  // 출금
+  fn withdraw(&mut self, amount: f64) -> Result<str, str> {
+    if amount <= 0.0 {
+      return Err("출금액은 0보다 커야 합니다".to_string())
+    }
+    if amount > self.balance {
+      return Err(format!("잔액 부족. 현재 잔액: {}", self.balance))
+    }
+    self.balance -= amount
+    Ok(format!("{}원 출금 완료. 잔액: {}", amount, self.balance))
+  }
+
+  // 잔액 조회
+  fn get_balance(&self) -> f64 {
+    self.balance
+  }
+
+  // 계좌 정보 조회
+  fn get_info(&self) -> str {
+    format!("계좌: {}, 예금주: {}, 계좌종류: {}, 잔액: {}",
+      self.id, self.holder_name, self.account_type, self.balance)
+  }
+}
+
+// ===== 테스트 코드 =====
+fn main() {
+  println("=== FreeLang 은행 시스템 - 1단계: 기본 계좌 ===")
+  println()
+
+  // 계좌 생성
+  var account = Account::new("ACC-001", "김진", "savings")
+  println(account.get_info())
+  println()
+
+  // 입금 테스트
+  println("--- 입금 테스트 ---")
+  match account.deposit(100000.0) {
+    Ok(msg) => println(msg),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  match account.deposit(50000.0) {
+    Ok(msg) => println(msg),
+    Err(e) => println(format!("에러: {}", e))
+  }
+  println()
+
+  // 출금 테스트
+  println("--- 출금 테스트 ---")
+  match account.withdraw(30000.0) {
+    Ok(msg) => println(msg),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  match account.withdraw(200000.0) {
+    Ok(msg) => println(msg),
+    Err(e) => println(format!("에러: {}", e))
+  }
+  println()
+
+  // 최종 정보
+  println("=== 최종 계좌 정보 ===")
+  println(account.get_info())
+  println()
+
+  // 여러 계좌 관리
+  println("=== 여러 계좌 관리 ===")
+  var account2 = Account::new("ACC-002", "이순신", "checking")
+  println(account2.get_info())
+
+  account2.deposit(200000.0).ok()
+  println(account2.get_info())
+}
+
+// ===== 결과 =====
+// 예상 출력:
+// === FreeLang 은행 시스템 - 1단계: 기본 계좌 ===
+//
+// --- 입금 테스트 ---
+// 100000원 입금 완료. 잔액: 100000
+// 50000원 입금 완료. 잔액: 150000
+//
+// --- 출금 테스트 ---
+// 30000원 출금 완료. 잔액: 120000
+// 에러: 잔액 부족. 현재 잔액: 120000
+//
+// === 최종 계좌 정보 ===
+// 계좌: ACC-001, 예금주: 김진, 계좌종류: savings, 잔액: 120000
+//
+// === 여러 계좌 관리 ===
+// 계좌: ACC-002, 예금주: 이순신, 계좌종류: checking, 잔액: 0
+// 계좌: ACC-002, 예금주: 이순신, 계좌종류: checking, 잔액: 200000

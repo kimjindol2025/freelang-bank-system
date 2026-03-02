@@ -1,0 +1,135 @@
+// FreeLang 은행 시스템 - 4단계: 유효성 검사
+// Status: ✅ 완전히 가능
+
+struct ValidationRules {
+  min_amount: f64,
+  max_amount: f64,
+  max_daily_withdrawal: f64,
+  min_balance: f64
+}
+
+impl ValidationRules {
+  fn default() -> ValidationRules {
+    ValidationRules {
+      min_amount: 1000.0,
+      max_amount: 10000000.0,
+      max_daily_withdrawal: 5000000.0,
+      min_balance: 0.0
+    }
+  }
+
+  fn for_savings_account() -> ValidationRules {
+    ValidationRules {
+      min_amount: 500.0,
+      max_amount: 50000000.0,
+      max_daily_withdrawal: 3000000.0,
+      min_balance: 10000.0
+    }
+  }
+
+  fn for_checking_account() -> ValidationRules {
+    ValidationRules {
+      min_amount: 100.0,
+      max_amount: 10000000.0,
+      max_daily_withdrawal: 10000000.0,
+      min_balance: 0.0
+    }
+  }
+}
+
+struct Validator {
+  rules: ValidationRules
+}
+
+impl Validator {
+  fn new(rules: ValidationRules) -> Validator {
+    Validator { rules }
+  }
+
+  fn validate_amount(&self, amount: f64) -> Result<(), str> {
+    if amount < self.rules.min_amount {
+      return Err(format!("최소 거래액: {}원", self.rules.min_amount))
+    }
+    if amount > self.rules.max_amount {
+      return Err(format!("최대 거래액: {}원", self.rules.max_amount))
+    }
+    Ok(())
+  }
+
+  fn validate_withdrawal(&self, amount: f64, current_balance: f64) -> Result<(), str> {
+    self.validate_amount(amount)?
+
+    if current_balance - amount < self.rules.min_balance {
+      return Err("최소 잔액 유지 필요".to_string())
+    }
+
+    if amount > self.rules.max_daily_withdrawal {
+      return Err(format!("일일 출금 한도: {}원", self.rules.max_daily_withdrawal))
+    }
+
+    Ok(())
+  }
+
+  fn validate_deposit(&self, amount: f64) -> Result<(), str> {
+    self.validate_amount(amount)?
+    Ok(())
+  }
+
+  fn validate_account_holder(&self, name: str) -> Result<(), str> {
+    if name.is_empty() {
+      return Err("예금주 이름이 비어있습니다".to_string())
+    }
+    if name.length() > 50 {
+      return Err("예금주 이름이 너무 깁니다".to_string())
+    }
+    Ok(())
+  }
+}
+
+// 테스트
+fn main() {
+  println("=== 유효성 검사 테스트 ===")
+  
+  var savings_validator = Validator::new(ValidationRules::for_savings_account())
+  var checking_validator = Validator::new(ValidationRules::for_checking_account())
+
+  // 정상 입금
+  println("--- 정상 입금 (저축) ---")
+  match savings_validator.validate_deposit(100000.0) {
+    Ok(()) => println("100,000원 입금 가능"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  // 최소액 미만
+  println("\n--- 최소액 미만 ---")
+  match savings_validator.validate_deposit(100.0) {
+    Ok(()) => println("100원 입금 가능"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  // 출금 검증
+  println("\n--- 출금 검증 ---")
+  match savings_validator.validate_withdrawal(50000.0, 200000.0) {
+    Ok(()) => println("50,000원 출금 가능"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  // 최소 잔액 미만
+  println("\n--- 최소 잔액 위반 ---")
+  match savings_validator.validate_withdrawal(195000.0, 200000.0) {
+    Ok(()) => println("195,000원 출금 가능"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  // 예금주 이름 검증
+  println("\n--- 예금주 이름 검증 ---")
+  match savings_validator.validate_account_holder("김진") {
+    Ok(()) => println("유효한 이름"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+
+  match savings_validator.validate_account_holder("") {
+    Ok(()) => println("유효한 이름"),
+    Err(e) => println(format!("에러: {}", e))
+  }
+}

@@ -1,0 +1,319 @@
+// FreeLang 은행 시스템 - 10단계: 분산 거래
+// Status: ❌ 불가능 (네트워크/분산 라이브러리 필요)
+// Note: 로컬 2-Phase Commit 개념만 시뮬레이션
+
+enum TransactionPhase {
+  Prepare,
+  Commit,
+  Abort,
+  RollBack
+}
+
+enum TransactionStatus {
+  Pending,
+  Prepared,
+  Committed,
+  Aborted,
+  RolledBack
+}
+
+struct TransactionCoordinator {
+  transaction_id: str,
+  status: TransactionStatus,
+  participants: [Participant],
+  start_time: str
+}
+
+struct Participant {
+  node_id: str,
+  account_id: str,
+  operation_type: str,  // "debit" or "credit"
+  amount: f64,
+  status: TransactionStatus,
+  can_commit: bool
+}
+
+struct TwoPhaseCommit {
+  coordinator: TransactionCoordinator,
+  log: [TransactionLog]
+}
+
+struct TransactionLog {
+  phase: TransactionPhase,
+  participant_id: str,
+  result: str,
+  timestamp: str
+}
+
+impl TransactionCoordinator {
+  fn new(transaction_id: str) -> TransactionCoordinator {
+    TransactionCoordinator {
+      transaction_id,
+      status: TransactionStatus::Pending,
+      participants: [],
+      start_time: "2026-03-02 10:30:00"
+    }
+  }
+
+  fn add_participant(&mut self, participant: Participant) {
+    self.participants.push(participant)
+  }
+}
+
+impl TwoPhaseCommit {
+  fn new(transaction_id: str) -> TwoPhaseCommit {
+    TwoPhaseCommit {
+      coordinator: TransactionCoordinator::new(transaction_id),
+      log: []
+    }
+  }
+
+  // ========== Phase 1: Prepare Phase ==========
+  // 각 참여자에게 준비 가능 여부 확인
+
+  fn phase_1_prepare(&mut self) -> Result<bool, str> {
+    println("📋 Phase 1: PREPARE - 거래 준비 단계")
+
+    var all_prepared = true
+
+    for participant in &mut self.coordinator.participants {
+      println(format!("  확인: {} ({}원 {})",
+        participant.node_id,
+        participant.amount,
+        participant.operation_type))
+
+      // 거래 가능 여부 확인 (로컬 시뮬레이션)
+      let can_prepare = self.check_participant_readiness(participant)
+
+      if can_prepare {
+        participant.status = TransactionStatus::Prepared
+        println(format!("    ✅ 준비 완료"))
+
+        self.log_transaction(
+          TransactionPhase::Prepare,
+          participant.node_id,
+          "PREPARE_OK"
+        )
+      } else {
+        all_prepared = false
+        println(format!("    ❌ 준비 불가"))
+
+        self.log_transaction(
+          TransactionPhase::Prepare,
+          participant.node_id,
+          "PREPARE_FAILED"
+        )
+      }
+    }
+
+    if all_prepared {
+      self.coordinator.status = TransactionStatus::Prepared
+      Ok(true)
+    } else {
+      self.coordinator.status = TransactionStatus::Aborted
+      Err("일부 참여자가 준비되지 않았습니다".to_string())
+    }
+  }
+
+  // ========== Phase 2: Commit Phase ==========
+  // 모든 참여자에게 거래 실행 지시
+
+  fn phase_2_commit(&mut self) -> Result<(), str> {
+    println("💾 Phase 2: COMMIT - 거래 확정 단계")
+
+    if self.coordinator.status != TransactionStatus::Prepared {
+      return Err("준비 단계가 완료되지 않았습니다".to_string())
+    }
+
+    var all_committed = true
+
+    for participant in &mut self.coordinator.participants {
+      println(format!("  실행: {} ({}원 {})",
+        participant.node_id,
+        participant.amount,
+        participant.operation_type))
+
+      // 거래 실행 (로컬 시뮬레이션)
+      let committed = self.execute_participant_transaction(participant)
+
+      if committed {
+        participant.status = TransactionStatus::Committed
+        println(format!("    ✅ 확정 완료"))
+
+        self.log_transaction(
+          TransactionPhase::Commit,
+          participant.node_id,
+          "COMMIT_OK"
+        )
+      } else {
+        all_committed = false
+        println(format!("    ❌ 확정 실패"))
+
+        self.log_transaction(
+          TransactionPhase::Commit,
+          participant.node_id,
+          "COMMIT_FAILED"
+        )
+      }
+    }
+
+    if all_committed {
+      self.coordinator.status = TransactionStatus::Committed
+      Ok(())
+    } else {
+      self.rollback()?
+      Err("일부 거래 실행 실패로 롤백됨".to_string())
+    }
+  }
+
+  // ========== Abort/Rollback ==========
+  // 거래 중단 및 상태 복구
+
+  fn rollback(&mut self) -> Result<(), str> {
+    println("⏮️  ROLLBACK - 거래 취소")
+
+    for participant in &mut self.coordinator.participants {
+      if participant.status != TransactionStatus::Committed {
+        continue
+      }
+
+      println(format!("  롤백: {} ({}원)", participant.node_id, participant.amount))
+
+      // 거래 역처리 (로컬 시뮬레이션)
+      participant.status = TransactionStatus::RolledBack
+      println(format!("    ✅ 롤백 완료"))
+
+      self.log_transaction(
+        TransactionPhase::RollBack,
+        participant.node_id,
+        "ROLLBACK_OK"
+      )
+    }
+
+    self.coordinator.status = TransactionStatus::RolledBack
+    Ok(())
+  }
+
+  // ========== 헬퍼 메서드 ==========
+
+  fn check_participant_readiness(&self, participant: &Participant) -> bool {
+    // 실제로는 원격 호출로 참여자 확인
+    // network::send_prepare_request(participant.node_id)
+
+    // 시뮬레이션: 충분한 잔액 확인
+    match participant.operation_type {
+      "debit" => participant.can_commit,  // 잔액 충분하면 true
+      "credit" => true,                   // 입금은 항상 가능
+      _ => false
+    }
+  }
+
+  fn execute_participant_transaction(&self, participant: &Participant) -> bool {
+    // 실제로는 원격 호출로 거래 실행
+    // network::send_commit_request(participant.node_id)
+
+    // 시뮬레이션: 거래 실행
+    println(format!("      실행중: {} {}원",
+      participant.operation_type,
+      participant.amount))
+
+    true
+  }
+
+  fn log_transaction(&mut self, phase: TransactionPhase, participant_id: str, result: str) {
+    self.log.push(TransactionLog {
+      phase,
+      participant_id,
+      result,
+      timestamp: "2026-03-02 10:30:00"
+    })
+  }
+
+  // 거래 상태 조회
+  fn get_transaction_status(&self) -> str {
+    format!(
+      "거래 {}: {} (참여자: {}명)",
+      self.coordinator.transaction_id,
+      match self.coordinator.status {
+        TransactionStatus::Pending => "대기",
+        TransactionStatus::Prepared => "준비됨",
+        TransactionStatus::Committed => "확정됨",
+        TransactionStatus::Aborted => "중단됨",
+        TransactionStatus::RolledBack => "롤백됨"
+      },
+      self.coordinator.participants.length()
+    )
+  }
+
+  // 거래 로그 출력
+  fn print_log(&self) {
+    println("\n📝 거래 로그:")
+    for entry in &self.log {
+      println(format!("  [{}] {} - {}",
+        entry.timestamp,
+        entry.participant_id,
+        entry.result))
+    }
+  }
+}
+
+// 테스트
+fn main() {
+  println("=== 분산 거래 테스트 (2-Phase Commit) ===")
+  println("주의: 실제 분산 시스템은 네트워크 라이브러리 필요")
+
+  var tpc = TwoPhaseCommit::new("TXN-2026-001")
+
+  println("\n--- 거래 참여자 등록 ---")
+
+  // 송금인 (A 계좌에서 출금)
+  var participant_a = Participant {
+    node_id: "BANK-A",
+    account_id: "ACC-001",
+    operation_type: "debit",
+    amount: 100000.0,
+    status: TransactionStatus::Pending,
+    can_commit: true  // 잔액 충분
+  }
+  tpc.coordinator.add_participant(participant_a)
+
+  // 수취인 (B 계좌에 입금)
+  var participant_b = Participant {
+    node_id: "BANK-B",
+    account_id: "ACC-002",
+    operation_type: "credit",
+    amount: 100000.0,
+    status: TransactionStatus::Pending,
+    can_commit: true
+  }
+  tpc.coordinator.add_participant(participant_b)
+
+  println("✅ 2명의 참여자 등록 완료")
+
+  println("\n--- 2-Phase Commit 실행 ---")
+
+  // Phase 1: Prepare
+  println!()
+  match tpc.phase_1_prepare() {
+    Ok(_) => println("✅ Phase 1 완료"),
+    Err(e) => println(format!("❌ Phase 1 실패: {}", e))
+  }
+
+  // Phase 2: Commit
+  println!()
+  match tpc.phase_2_commit() {
+    Ok(_) => println("✅ Phase 2 완료"),
+    Err(e) => println(format!("⚠️ Phase 2: {}", e))
+  }
+
+  println!("\n--- 최종 상태 ---")
+  println(tpc.get_transaction_status())
+
+  tpc.print_log()
+
+  println!("\n--- 제한사항 ---")
+  println("❌ 네트워크 통신: 미지원 (socket 라이브러리 필요)")
+  println("❌ 실시간 분산 동기화: 미지원 (tokio/async 라이브러리 필요)")
+  println("❌ Consensus 알고리즘: 미지원 (Raft/Paxos 구현 필요)")
+  println("❌ 장애 복구: 미지원 (persistent storage 필요)")
+}

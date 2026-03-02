@@ -1,0 +1,128 @@
+// FreeLang 은행 시스템 - 2단계: 트랜잭션
+// Status: ✅ 완전히 가능
+
+enum TransactionType {
+  Deposit,
+  Withdrawal,
+  Transfer
+}
+
+struct Transaction {
+  id: str,
+  account_id: str,
+  tx_type: TransactionType,
+  amount: f64,
+  timestamp: str,
+  status: str  // "pending", "completed", "failed"
+}
+
+impl Transaction {
+  fn new(account_id: str, tx_type: TransactionType, amount: f64) -> Transaction {
+    Transaction {
+      id: format!("TXN-{}-{}", account_id, timestamp()),
+      account_id,
+      tx_type,
+      amount,
+      timestamp: format_timestamp(),
+      status: "pending".to_string()
+    }
+  }
+
+  fn complete(&mut self) {
+    self.status = "completed".to_string()
+  }
+
+  fn fail(&mut self) {
+    self.status = "failed".to_string()
+  }
+
+  fn get_info(&self) -> str {
+    let tx_name = match self.tx_type {
+      TransactionType::Deposit => "입금",
+      TransactionType::Withdrawal => "출금",
+      TransactionType::Transfer => "송금"
+    }
+    format!("[{}] {} - {}원 - 상태: {}", self.id, tx_name, self.amount, self.status)
+  }
+}
+
+struct TransactionHistory {
+  transactions: Vec<Transaction>
+}
+
+impl TransactionHistory {
+  fn new() -> TransactionHistory {
+    TransactionHistory { transactions: Vec::new() }
+  }
+
+  fn add_transaction(&mut self, tx: Transaction) {
+    self.transactions.push(tx)
+  }
+
+  fn get_history(&self) -> Vec<&Transaction> {
+    &self.transactions
+  }
+
+  fn get_total_deposits(&self) -> f64 {
+    var total: f64 = 0.0
+    for tx in &self.transactions {
+      if matches!(tx.tx_type, TransactionType::Deposit) && tx.status == "completed" {
+        total += tx.amount
+      }
+    }
+    total
+  }
+
+  fn get_total_withdrawals(&self) -> f64 {
+    var total: f64 = 0.0
+    for tx in &self.transactions {
+      if matches!(tx.tx_type, TransactionType::Withdrawal) && tx.status == "completed" {
+        total += tx.amount
+      }
+    }
+    total
+  }
+
+  fn print_history(&self) {
+    println("=== 거래 내역 ===")
+    for tx in &self.transactions {
+      println(tx.get_info())
+    }
+  }
+}
+
+// 테스트
+fn main() {
+  var history = TransactionHistory::new()
+
+  // 거래 생성
+  var tx1 = Transaction::new("ACC-001", TransactionType::Deposit, 100000.0)
+  tx1.complete()
+  history.add_transaction(tx1)
+
+  var tx2 = Transaction::new("ACC-001", TransactionType::Withdrawal, 30000.0)
+  tx2.complete()
+  history.add_transaction(tx2)
+
+  var tx3 = Transaction::new("ACC-001", TransactionType::Transfer, 20000.0)
+  tx3.complete()
+  history.add_transaction(tx3)
+
+  // 실패한 거래
+  var tx4 = Transaction::new("ACC-001", TransactionType::Withdrawal, 200000.0)
+  tx4.fail()
+  history.add_transaction(tx4)
+
+  history.print_history()
+  println()
+  printf("총 입금: {}원\\n", history.get_total_deposits())
+  printf("총 출금: {}원\\n", history.get_total_withdrawals())
+}
+
+fn timestamp() -> str {
+  "2026030110"  // 간단화
+}
+
+fn format_timestamp() -> str {
+  "2026-03-01 10:00:00"
+}

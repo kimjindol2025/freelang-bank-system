@@ -1,0 +1,296 @@
+// FreeLang 은행 시스템 - 8단계: 고급 기능 (이자/수수료)
+// Status: ✅ 완전히 가능 (수학 함수)
+
+struct InterestRate {
+  annual_rate: f64,
+  compound_frequency: str  // "daily", "monthly", "yearly"
+}
+
+struct FeePolicy {
+  transfer_fee_percent: f64,
+  withdrawal_fee_fixed: f64,
+  low_balance_fee: f64,
+  overdraft_fee: f64
+}
+
+struct Account {
+  id: str,
+  holder_name: str,
+  balance: f64,
+  interest_rate: InterestRate,
+  fee_policy: FeePolicy,
+  account_created_date: str
+}
+
+impl Account {
+  fn new(
+    id: str,
+    holder_name: str,
+    initial_balance: f64,
+    annual_rate: f64
+  ) -> Account {
+    Account {
+      id,
+      holder_name,
+      balance: initial_balance,
+      interest_rate: InterestRate {
+        annual_rate,
+        compound_frequency: "monthly"
+      },
+      fee_policy: FeePolicy {
+        transfer_fee_percent: 0.005,  // 0.5%
+        withdrawal_fee_fixed: 0.0,
+        low_balance_fee: 2500.0,
+        overdraft_fee: 5000.0
+      },
+      account_created_date: "2026-03-02"
+    }
+  }
+
+  // ========== 이자 계산 ==========
+
+  // 단리 계산 (Simple Interest)
+  // I = P * r * t
+  // P: 원금, r: 연이율, t: 시간(년)
+  fn calculate_simple_interest(&self, days: i32) -> f64 {
+    let years = days as f64 / 365.0
+    self.balance * self.interest_rate.annual_rate * years
+  }
+
+  // 복리 계산 (Compound Interest)
+  // A = P(1 + r/n)^(nt)
+  // P: 원금, r: 연이율, n: 복리 빈도, t: 시간(년)
+  fn calculate_compound_interest(&self, days: i32) -> f64 {
+    let years = days as f64 / 365.0
+    let n = self.get_compound_frequency_value()
+    let rate = self.interest_rate.annual_rate
+
+    // A = P(1 + r/n)^(nt)
+    let base = 1.0 + (rate / n as f64)
+    let exponent = n as f64 * years
+    let amount = self.balance * pow(base, exponent)
+
+    // 이자 = A - P
+    amount - self.balance
+  }
+
+  // 월 이자 계산
+  fn calculate_monthly_interest(&self) -> f64 {
+    let monthly_rate = self.interest_rate.annual_rate / 12.0
+    self.balance * monthly_rate
+  }
+
+  // 일일 이자 계산
+  fn calculate_daily_interest(&self) -> f64 {
+    let daily_rate = self.interest_rate.annual_rate / 365.0
+    self.balance * daily_rate
+  }
+
+  // 이자 적립 (잔액에 추가)
+  fn apply_interest(&mut self, days: i32) -> Result<f64, str> {
+    let interest = self.calculate_compound_interest(days)
+
+    if interest < 0.0 {
+      return Err("계산된 이자가 음수입니다".to_string())
+    }
+
+    self.balance += interest
+    Ok(interest)
+  }
+
+  // ========== 수수료 계산 ==========
+
+  // 송금 수수료
+  fn calculate_transfer_fee(&self, amount: f64) -> f64 {
+    amount * self.fee_policy.transfer_fee_percent
+  }
+
+  // 총 출금액 (수수료 포함)
+  fn calculate_withdrawal_with_fee(&self, amount: f64) -> f64 {
+    let fee = self.fee_policy.withdrawal_fee_fixed
+    amount + fee
+  }
+
+  // 최소 잔액 미충족 수수료
+  fn check_low_balance_fee(&self) -> f64 {
+    if self.balance < 100000.0 {  // 최소 잔액: 10만원
+      self.fee_policy.low_balance_fee
+    } else {
+      0.0
+    }
+  }
+
+  // 초과 출금 수수료
+  fn check_overdraft_fee(&self, withdrawal_amount: f64) -> f64 {
+    if self.balance < withdrawal_amount {
+      self.fee_policy.overdraft_fee
+    } else {
+      0.0
+    }
+  }
+
+  // 수수료 적용 (출금 시)
+  fn apply_withdrawal_fees(&mut self, withdrawal_amount: f64) -> Result<(), str> {
+    let withdrawal_fee = self.fee_policy.withdrawal_fee_fixed
+    let low_balance_fee = self.check_low_balance_fee()
+    let overdraft_fee = self.check_overdraft_fee(withdrawal_amount)
+
+    let total_fees = withdrawal_fee + low_balance_fee + overdraft_fee
+
+    if self.balance < withdrawal_amount + total_fees {
+      return Err("수수료를 포함한 출금액이 잔액을 초과합니다".to_string())
+    }
+
+    self.balance -= total_fees
+    Ok(())
+  }
+
+  // ========== 할인 로직 ==========
+
+  // VIP 고객 할인 (잔액 기준)
+  fn get_vip_discount_rate(&self) -> f64 {
+    match self.balance {
+      b if b >= 10000000.0 => 0.3,  // 30% 할인
+      b if b >= 5000000.0 => 0.2,   // 20% 할인
+      b if b >= 1000000.0 => 0.1,   // 10% 할인
+      _ => 0.0                       // 할인 없음
+    }
+  }
+
+  // 할인된 수수료
+  fn get_discounted_fee(&self, original_fee: f64) -> f64 {
+    let discount_rate = self.get_vip_discount_rate()
+    original_fee * (1.0 - discount_rate)
+  }
+
+  // ========== 종합 거래 처리 ==========
+
+  // 이자 포함 입금
+  fn deposit_with_interest(&mut self, amount: f64, days: i32) -> Result<str, str> {
+    if amount <= 0.0 {
+      return Err("입금액은 0원보다 커야 합니다".to_string())
+    }
+
+    // 이자 적립
+    match self.apply_interest(days) {
+      Ok(interest) => {
+        self.balance += amount
+        Ok(format!(
+          "입금 성공: {}원 | 적립 이자: {}원 | 최종 잔액: {}원",
+          amount,
+          interest.round(),
+          self.balance.round()
+        ))
+      },
+      Err(e) => Err(e)
+    }
+  }
+
+  // 수수료 포함 출금
+  fn withdraw_with_fees(&mut self, amount: f64) -> Result<str, str> {
+    if amount <= 0.0 {
+      return Err("출금액은 0원보다 커야 합니다".to_string())
+    }
+
+    // 수수료 적용
+    match self.apply_withdrawal_fees(amount) {
+      Ok(()) => {
+        self.balance -= amount
+        let discount_rate = self.get_vip_discount_rate()
+        Ok(format!(
+          "출금 성공: {}원 | VIP 할인율: {:.1}% | 최종 잔액: {}원",
+          amount,
+          discount_rate * 100.0,
+          self.balance.round()
+        ))
+      },
+      Err(e) => Err(e)
+    }
+  }
+
+  // ========== 헬퍼 메서드 ==========
+
+  fn get_compound_frequency_value(&self) -> i32 {
+    match self.interest_rate.compound_frequency {
+      "daily" => 365,
+      "monthly" => 12,
+      "yearly" => 1,
+      _ => 12
+    }
+  }
+}
+
+// 거듭제곱 함수 (pow 모의)
+fn pow(base: f64, exponent: f64) -> f64 {
+  // 실제로는 std::f64::powf 사용
+  // base.powf(exponent)
+
+  // 간단한 근사 계산
+  var result = 1.0
+  var exp = exponent
+
+  // 지수가 양수일 때
+  if exponent > 0.0 {
+    for _ in 0..(exponent as i32) {
+      result *= base
+    }
+  }
+  // 지수가 음수일 때
+  else if exponent < 0.0 {
+    for _ in 0..(-exponent as i32) {
+      result /= base
+    }
+  }
+
+  result
+}
+
+// 테스트
+fn main() {
+  println("=== 고급 기능 테스트 (이자/수수료) ===")
+
+  var account = Account::new(
+    "ACC-001",
+    "김진",
+    1000000.0,
+    0.03  // 연 3%
+  )
+
+  println("\n--- 초기 정보 ---")
+  println(format!("계좌: {} | 예금주: {}", account.id, account.holder_name))
+  println(format!("초기 잔액: {}원", account.balance))
+  println(format!("연이율: {:.2}%", account.interest_rate.annual_rate * 100.0))
+
+  println("\n--- 이자 계산 (30일) ---")
+  let simple_interest = account.calculate_simple_interest(30)
+  let compound_interest = account.calculate_compound_interest(30)
+  println(format!("단리: {}원", simple_interest.round()))
+  println(format!("복리: {}원", compound_interest.round()))
+
+  println("\n--- 월 이자 ---")
+  let monthly = account.calculate_monthly_interest()
+  println(format!("월 이자: {}원", monthly.round()))
+
+  println("\n--- 수수료 계산 ---")
+  let transfer_fee = account.calculate_transfer_fee(100000.0)
+  println(format!("송금 수수료 (100,000원): {}원", transfer_fee.round()))
+
+  println("\n--- VIP 할인 ---")
+  let discount_rate = account.get_vip_discount_rate()
+  println(format!("VIP 할인율: {:.1}%", discount_rate * 100.0))
+
+  println("\n--- 이자 포함 입금 ---")
+  match account.deposit_with_interest(500000.0, 30) {
+    Ok(msg) => println(format!("✅ {}", msg)),
+    Err(e) => println(format!("❌ {}", e))
+  }
+
+  println("\n--- 수수료 포함 출금 ---")
+  match account.withdraw_with_fees(200000.0) {
+    Ok(msg) => println(format!("✅ {}", msg)),
+    Err(e) => println(format!("❌ {}", e))
+  }
+
+  println("\n--- 최종 잔액 ---")
+  println(format!("잔액: {}원", account.balance.round()))
+}
