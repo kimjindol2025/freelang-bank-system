@@ -36,6 +36,17 @@ func InitDB(filepath string) (*DB, error) {
 // createTables 필요한 모든 테이블 생성
 func (db *DB) createTables() error {
 	queries := []string{
+		// 사용자 테이블
+		`CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			username TEXT NOT NULL UNIQUE,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			role TEXT NOT NULL DEFAULT 'user',
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		)`,
+
 		// 계좌 테이블
 		`CREATE TABLE IF NOT EXISTS accounts (
 			id TEXT PRIMARY KEY,

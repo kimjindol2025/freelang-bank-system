@@ -1,0 +1,60 @@
+2026/03/25 08:50:32 ✅ 데이터베이스 초기화 완료
+=== RUN   TestRegisterUser
+2026/03/25 08:50:32 ✅ 데이터베이스 초기화 완료
+    auth_test.go:75: ✅ Test 1: 사용자 등록 - PASS (user_id: USER-5e03d23e)
+--- PASS: TestRegisterUser (0.00s)
+=== RUN   TestLoginUser
+    auth_test.go:120: ✅ Test 2: 로그인 - PASS
+--- PASS: TestLoginUser (0.00s)
+=== RUN   TestLoginWrongPassword
+    auth_test.go:155: ✅ Test 3a: 잘못된 비밀번호 검증 - PASS
+    auth_test.go:173: ✅ Test 3b: 존재하지 않는 이메일 검증 - PASS
+--- PASS: TestLoginWrongPassword (0.00s)
+=== RUN   TestGetProfile
+    auth_test.go:217: ✅ Test 4: 프로필 조회 - PASS
+--- PASS: TestGetProfile (0.00s)
+=== RUN   TestGetProfileUnauthorized
+    auth_test.go:231: ✅ Test 5: 인증 없이 프로필 조회 검증 - PASS
+--- PASS: TestGetProfileUnauthorized (0.00s)
+=== RUN   TestDuplicateEmail
+    auth_test.go:269: ✅ Test 6: 중복 이메일 검증 - PASS
+--- PASS: TestDuplicateEmail (0.00s)
+=== RUN   TestCreateAccountAndBalance
+    bank_system_test.go:104: ✅ Test 1: 계좌 생성 및 잔액 확인 - PASS (Account ID: ACC780382a4)
+--- PASS: TestCreateAccountAndBalance (0.00s)
+=== RUN   TestDepositAndCheckBalance
+    bank_system_test.go:188: ✅ Test 2: 송금 후 잔액 업데이트 - PASS
+--- PASS: TestDepositAndCheckBalance (0.00s)
+=== RUN   TestFraudDetection
+    bank_system_test.go:225: ✅ Test 3: 사기 탐지 (Critical score=80) - PASS
+--- PASS: TestFraudDetection (0.00s)
+=== RUN   TestReverseTransaction
+    bank_system_test.go:293: ✅ Test 4: 거래 취소 - PASS
+--- PASS: TestReverseTransaction (0.00s)
+=== RUN   TestInvalidInput
+    bank_system_test.go:316: ✅ Test 5a: 음수 금액 검증 - PASS
+    bank_system_test.go:333: ✅ Test 5b: 빈 이름 검증 - PASS
+--- PASS: TestInvalidInput (0.00s)
+=== RUN   TestDailyReport
+    bank_system_test.go:350: ✅ Test 6: 일일 리포트 - PASS
+--- PASS: TestDailyReport (0.00s)
+=== RUN   TestMonthlyReport
+    bank_system_test.go:366: ✅ Test 7: 월간 리포트 - PASS
+--- PASS: TestMonthlyReport (0.00s)
+=== RUN   TestAllIntegration
+2026/03/25 08:50:32 
+📋 FreeLang Bank System - Integration Tests (Critical Issues Fix)
+2026/03/25 08:50:32 ============================================================
+    bank_system_test.go:104: ✅ Test 1: 계좌 생성 및 잔액 확인 - PASS (Account ID: ACCbb948084)
+    bank_system_test.go:188: ✅ Test 2: 송금 후 잔액 업데이트 - PASS
+    bank_system_test.go:225: ✅ Test 3: 사기 탐지 (Critical score=80) - PASS
+    bank_system_test.go:293: ✅ Test 4: 거래 취소 - PASS
+    bank_system_test.go:316: ✅ Test 5a: 음수 금액 검증 - PASS
+    bank_system_test.go:333: ✅ Test 5b: 빈 이름 검증 - PASS
+    bank_system_test.go:350: ✅ Test 6: 일일 리포트 - PASS
+    bank_system_test.go:366: ✅ Test 7: 월간 리포트 - PASS
+2026/03/25 08:50:32 ============================================================
+2026/03/25 08:50:32 ✅ 모든 Critical Issue 테스트 완료!
+--- PASS: TestAllIntegration (0.00s)
+PASS
+ok  	freelang-bank-system	0.046s

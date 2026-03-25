@@ -7,7 +7,11 @@ import AccountList from "./AccountList";
 import TransactionForm from "./TransactionForm";
 import FraudDetection from "./FraudDetection";
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onLogout?: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -18,11 +22,14 @@ const Dashboard: React.FC = () => {
     "disconnected"
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [username, setUsername] = useState("");
 
   // 초기 로드
   useEffect(() => {
     loadAccounts();
     checkServerStatus();
+    const storedUsername = localStorage.getItem("username") || "User";
+    setUsername(storedUsername);
   }, []);
 
   // 선택된 계좌의 거래 내역 로드
@@ -88,12 +95,32 @@ const Dashboard: React.FC = () => {
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h1 style={{ margin: 0 }}>🏦 FreeLang Bank Dashboard</h1>
-            <div>
-              {serverStatus === "connected" ? (
-                <span style={{ color: "#2ecc71" }}>✅ 서버 연결됨</span>
-              ) : (
-                <span style={{ color: "#e74c3c" }}>❌ 서버 연결 끊김</span>
-              )}
+            <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+              <div>
+                {serverStatus === "connected" ? (
+                  <span style={{ color: "#2ecc71" }}>✅ 서버 연결됨</span>
+                ) : (
+                  <span style={{ color: "#e74c3c" }}>❌ 서버 연결 끊김</span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <span>👤 {username}</span>
+                <button
+                  onClick={onLogout}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#e74c3c",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  로그아웃
+                </button>
+              </div>
             </div>
           </div>
         </div>

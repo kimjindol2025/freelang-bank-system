@@ -57,6 +57,21 @@ func main() {
 	router.GET("/api/reports/daily/:date", reportHandler.GetDailyReport)
 	router.GET("/api/reports/monthly/:year_month", reportHandler.GetMonthlyReport)
 
+	// Auth 핸들러
+	jwtSecret := "freelang-bank-secret-key-2026" // 프로덕션에서는 환경변수에서 로드
+	authHandler := handlers.NewAuthHandler(db, jwtSecret)
+	router.POST("/api/auth/register", authHandler.Register)
+	router.POST("/api/auth/login", authHandler.Login)
+	router.POST("/api/auth/refresh", authHandler.RefreshToken)
+	router.GET("/api/auth/profile", handlers.AuthMiddleware(jwtSecret), authHandler.GetProfile)
+
+	// Protected routes (JWT 미들웨어 적용)
+	protected := router.Group("/api")
+	protected.Use(handlers.AuthMiddleware(jwtSecret))
+	{
+		// 이후 추가될 보호된 엔드포인트들을 여기에 추가
+	}
+
 	// 서버 시작
 	log.Println("🚀 FreeLang Bank Server 시작...")
 	log.Println("📍 http://localhost:8080")

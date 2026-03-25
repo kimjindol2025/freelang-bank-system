@@ -190,6 +190,60 @@ class BankAPI {
     return response.data;
   }
 
+  // 🔐 인증 API
+
+  /**
+   * 회원가입
+   */
+  async register(
+    username: string,
+    email: string,
+    password: string
+  ): Promise<any> {
+    const response = await this.api.post("/api/auth/register", {
+      username,
+      email,
+      password,
+    });
+    return response.data;
+  }
+
+  /**
+   * 로그인
+   */
+  async login(email: string, password: string): Promise<any> {
+    const response = await this.api.post("/api/auth/login", {
+      email,
+      password,
+    });
+    return response.data;
+  }
+
+  /**
+   * 토큰 갱신
+   */
+  async refreshToken(): Promise<any> {
+    const response = await this.api.post("/api/auth/refresh");
+    return response.data;
+  }
+
+  /**
+   * 프로필 조회
+   */
+  async getProfile(): Promise<any> {
+    const response = await this.api.get("/api/auth/profile");
+    return response.data;
+  }
+
+  /**
+   * 로그아웃
+   */
+  logout(): void {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("username");
+  }
+
   // 🏥 헬스 체크
 
   /**
