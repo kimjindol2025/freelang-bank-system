@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"log"
-	"github.com/freelang/bank-server/handlers"
-	"github.com/freelang/bank-server/database"
+	"freelang-bank-system/server/handlers"
+	"freelang-bank-system/server/database"
 )
 
 func main() {

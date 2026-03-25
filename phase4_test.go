@@ -8,17 +8,17 @@ import (
 	"testing"
 	"log"
 	"github.com/gin-gonic/gin"
-	"github.com/freelang/bank-server/database"
-	"github.com/freelang/bank-server/handlers"
+	"freelang-bank-system/server/database"
+	"freelang-bank-system/server/handlers"
 )
 
 // Phase 4 테스트: Go REST API Server
 
-var db *database.DB
+var testDB *database.DB
 
 func init() {
 	var err error
-	db, err = database.InitDB(":memory:") // 테스트용 메모리 DB
+	testDB, err = database.InitDB(":memory:") // 테스트용 메모리 DB
 	if err != nil {
 		log.Fatalf("테스트 DB 초기화 실패: %v", err)
 	}
@@ -28,10 +28,10 @@ func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	accountHandler := handlers.NewAccountHandler(db)
-	transactionHandler := handlers.NewTransactionHandler(db)
-	fraudHandler := handlers.NewFraudHandler(db)
-	reportHandler := handlers.NewReportHandler(db)
+	accountHandler := handlers.NewAccountHandler(testDB)
+	transactionHandler := handlers.NewTransactionHandler(testDB)
+	fraudHandler := handlers.NewFraudHandler(testDB)
+	reportHandler := handlers.NewReportHandler(testDB)
 
 	// Account Routes
 	router.POST("/api/accounts", accountHandler.CreateAccount)
@@ -203,7 +203,7 @@ func TestGetMonthlyReport(t *testing.T) {
 
 func TestAllPhase4(t *testing.T) {
 	log.Println("\n📋 Phase 4: Go REST API Server - Integration Tests")
-	log.Println("=" * 60)
+	log.Println("============================================================")
 
 	TestCreateAccount(t)
 	TestListAccounts(t)
@@ -213,6 +213,6 @@ func TestAllPhase4(t *testing.T) {
 	TestGetDailyReport(t)
 	TestGetMonthlyReport(t)
 
-	log.Println("=" * 60)
+	log.Println("============================================================")
 	log.Println("✅ 모든 테스트 완료!")
 }
