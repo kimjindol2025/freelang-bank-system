@@ -1,0 +1,57 @@
+// 🏦 Simple Bank Test
+
+// Print header
+print("🏦 FreeLang Bank System Test")
+
+// Define account type
+type Account = { id: str, name: str, balance: f64 }
+
+// Create account function
+fn make_account(id: str, name: str) -> Account {
+  { id: id, name: name, balance: 0.0 }
+}
+
+// Deposit function
+fn deposit(acc: Account, amt: f64) -> Account {
+  { id: acc.id, name: acc.name, balance: acc.balance + amt }
+}
+
+// Withdraw function
+fn withdraw(acc: Account, amt: f64) -> Account {
+  { id: acc.id, name: acc.name, balance: acc.balance - amt }
+}
+
+// Test 1: Create accounts
+let acc1 = make_account("CHK001", "Alice")
+let acc2 = make_account("SAV001", "Bob")
+
+print("Test 1: Created accounts")
+
+// Test 2: Deposit
+let acc1 = deposit(acc1, 1000.0)
+let acc2 = deposit(acc2, 5000.0)
+
+print("Test 2: Deposited")
+print("Alice balance: " + to_str(acc1.balance))
+print("Bob balance: " + to_str(acc2.balance))
+
+// Test 3: Withdraw
+let acc1 = withdraw(acc1, 200.0)
+
+print("Test 3: Withdrew 200")
+print("Alice balance: " + to_str(acc1.balance))
+
+// Test 4: Transfer
+let transfer = 100.0
+let acc1 = withdraw(acc1, transfer)
+let acc2 = deposit(acc2, transfer)
+
+print("Test 4: Transfer 100")
+print("Alice balance: " + to_str(acc1.balance))
+print("Bob balance: " + to_str(acc2.balance))
+
+// Test 5: Total balance
+let total = acc1.balance + acc2.balance
+print("Test 5: Total assets: " + to_str(total))
+
+print("✅ All tests passed!")

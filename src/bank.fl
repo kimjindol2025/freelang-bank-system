@@ -1,0 +1,188 @@
+// 🏦 FreeLang Bank System - Simplified Core
+// 간단한 뱅킹 시스템 (프로토타입)
+
+print("🏦 FreeLang Bank System - Prototype")
+print("=" * 50)
+
+// ========================================
+// 계좌 데이터 구조
+// ========================================
+
+type Account = {
+  id: str,
+  name: str,
+  balance: f64,
+  type: str,  // "Checking", "Savings", "CD"
+  rate: f64,  // 연 이자율
+}
+
+// ========================================
+// 1️⃣ 계좌 생성
+// ========================================
+
+fn create_account(id: str, name: str, acc_type: str) -> Account {
+  {
+    id: id,
+    name: name,
+    balance: 0.0,
+    type: acc_type,
+    rate: if acc_type == "Savings" { 2.0 }
+          else if acc_type == "CD" { 5.0 }
+          else { 0.0 },
+  }
+}
+
+// ========================================
+// 2️⃣ 입금
+// ========================================
+
+fn deposit(account: Account, amount: f64) -> Account {
+  if amount <= 0.0 {
+    print("❌ 입금액은 0보다 커야 합니다")
+    return account
+  }
+
+  {
+    id: account.id,
+    name: account.name,
+    balance: account.balance + amount,
+    type: account.type,
+    rate: account.rate,
+  }
+}
+
+// ========================================
+// 3️⃣ 출금
+// ========================================
+
+fn withdraw(account: Account, amount: f64) -> Account {
+  if amount <= 0.0 {
+    print("❌ 출금액은 0보다 커야 합니다")
+    return account
+  }
+
+  if account.balance < amount {
+    print("❌ 잔액 부족")
+    return account
+  }
+
+  {
+    id: account.id,
+    name: account.name,
+    balance: account.balance - amount,
+    type: account.type,
+    rate: account.rate,
+  }
+}
+
+// ========================================
+// 4️⃣ 이자 계산 (일일)
+// ========================================
+
+fn apply_daily_interest(account: Account) -> Account {
+  if account.rate == 0.0 {
+    return account
+  }
+
+  let interest = account.balance * (account.rate / 100.0 / 365.0)
+
+  {
+    id: account.id,
+    name: account.name,
+    balance: account.balance + interest,
+    type: account.type,
+    rate: account.rate,
+  }
+}
+
+// ========================================
+// 5️⃣ 계좌 정보 출력
+// ========================================
+
+fn print_account(account: Account) {
+  print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  print("📋 계좌: " + account.id)
+  print("👤 예금주: " + account.name)
+  print("💰 잔액: $" + to_str(account.balance))
+  print("📊 타입: " + account.type)
+  print("📈 이율: " + to_str(account.rate) + "%")
+  print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+// ========================================
+// MAIN: 시뮬레이션
+// ========================================
+
+print("")
+print("1️⃣ 계좌 생성")
+print("-" * 50)
+
+let acc1 = create_account("ACC001", "김진돌", "Checking")
+let acc2 = create_account("ACC002", "이순신", "Savings")
+
+print("✅ Checking 계좌 생성: " + acc1.id)
+print("✅ Savings 계좌 생성: " + acc2.id)
+
+print("")
+print("2️⃣ 입금")
+print("-" * 50)
+
+let acc1 = deposit(acc1, 1500.0)
+print("✅ 김진돌 입금: $1,500")
+
+let acc2 = deposit(acc2, 5000.0)
+print("✅ 이순신 입금: $5,000")
+
+print_account(acc1)
+print("")
+print_account(acc2)
+
+print("")
+print("3️⃣ 출금")
+print("-" * 50)
+
+let acc1 = withdraw(acc1, 300.0)
+print("✅ 김진돌 출금: $300")
+print("   잔액: $" + to_str(acc1.balance))
+
+print("")
+print("4️⃣ 이자 계산 (1일)")
+print("-" * 50)
+
+let interest_daily = acc2.balance * (acc2.rate / 100.0 / 365.0)
+print("이순신의 일일 이자: $" + to_str(interest_daily))
+
+let acc2 = apply_daily_interest(acc2)
+print("✅ 이자 적용 후: $" + to_str(acc2.balance))
+
+print("")
+print("5️⃣ 계좌이체")
+print("-" * 50)
+
+let transfer_amount = 200.0
+let fee = 1.0
+
+let acc1 = withdraw(acc1, transfer_amount + fee)
+let acc2 = deposit(acc2, transfer_amount)
+
+print("✅ 김진돌 → 이순신 이체")
+print("   이체: $" + to_str(transfer_amount))
+print("   수수료: $" + to_str(fee))
+print("   김진돌 잔액: $" + to_str(acc1.balance))
+print("   이순신 잔액: $" + to_str(acc2.balance))
+
+print("")
+print("6️⃣ 최종 잔액")
+print("-" * 50)
+
+print_account(acc1)
+print("")
+print_account(acc2)
+
+let total = acc1.balance + acc2.balance
+print("")
+print("💰 총 자산: $" + to_str(total))
+
+print("")
+print("=" * 50)
+print("✅ 은행 시스템 시뮬레이션 완료!")
