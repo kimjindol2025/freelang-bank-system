@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-api
+  namespace: freelang-bank
+  labels:
+    app: bank-api
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: bank-api
+  template:
+    metadata:
+      labels:
+        app: bank-api
+        version: v1
+    spec:
+      serviceAccountName: bank-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+      - name: api
+        image: bank-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+        env:
+        - name: DB_PATH
+          value: /app/data/freelang_bank.db
+        - name: LOG_LEVEL
+          value: "info"
+
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: bank-data-pvc
+
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-api-service
+  namespace: freelang-bank
+  labels:
+    app: bank-api
+spec:
+  type: ClusterIP
+  selector:
+    app: bank-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  sessionAffinity: None
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-api
+  namespace: freelang-bank
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bank-api-role
+  namespace: freelang-bank
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bank-api-rolebinding
+  namespace: freelang-bank
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bank-api-role
+subjects:
+- kind: ServiceAccount
+  name: bank-api
+  namespace: freelang-bank

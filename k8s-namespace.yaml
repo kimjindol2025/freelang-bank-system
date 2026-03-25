@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: freelang-bank
+  labels:
+    name: freelang-bank
+    environment: production

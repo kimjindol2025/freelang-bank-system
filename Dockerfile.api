@@ -1,0 +1,46 @@
+# 🏦 FreeLang Bank - Go API Server Dockerfile
+# 멀티 스테이지 빌드: 최적화된 최종 이미지
+
+# Stage 1: Builder
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# 의존성 설치
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
+
+# Go 모듈 파일 복사
+COPY go.mod go.sum ./
+
+# 의존성 다운로드
+RUN go mod download
+
+# 소스 코드 복사
+COPY server/ ./server/
+
+# 바이너리 빌드
+RUN CGO_ENABLED=1 GOOS=linux go build -o bank-server ./server/main.go
+
+# Stage 2: Runtime
+FROM alpine:3.18
+
+WORKDIR /app
+
+# 필수 라이브러리 설치
+RUN apk add --no-cache ca-certificates sqlite-libs
+
+# 빌더 스테이지에서 바이너리 복사
+COPY --from=builder /app/bank-server .
+
+# 데이터베이스 디렉토리 생성
+RUN mkdir -p /app/data
+
+# 포트 노출
+EXPOSE 8080
+
+# 헬스 체크
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# 실행
+CMD ["./bank-server"]

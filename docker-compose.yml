@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # 🗄️ SQLite Database (Volume 사용)
+  database:
+    image: alpine:latest
+    volumes:
+      - ./data:/data
+    command: sh -c "mkdir -p /data && echo 'Database volume created'"
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/freelang_bank.db"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 🏦 Go API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: bank-api
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_PATH=/app/data/freelang_bank.db
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bank-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 🎨 React Dashboard (Nginx)
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: bank-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - bank-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 📊 Prometheus (모니터링)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: bank-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - api
+    networks:
+      - bank-network
+    restart: unless-stopped
+
+  # 📈 Grafana (대시보드)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: bank-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - bank-network
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  bank-network:
+    driver: bridge
