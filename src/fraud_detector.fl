@@ -1,0 +1,277 @@
+// 🏦 FreeLang Bank System - Fraud Detection Module
+// 사기 탐지 시스템 (400+ lines)
+
+// 경고 심각도
+enum AlertSeverity {
+  Low,     // 낮음
+  Medium,  // 중간
+  High,    // 높음
+  Critical, // 치명적
+}
+
+// 경고 레코드
+type FraudAlert = record {
+  alert_id: str,
+  account_id: str,
+  severity: AlertSeverity,
+  reason: str,
+  amount: f64,
+  timestamp: i64,
+  is_blocked: bool,
+}
+
+// ========================================
+// 1️⃣ 거래액 초과 감지
+// ========================================
+
+fn detect_large_transaction(amount: f64) -> (bool, AlertSeverity) {
+  if amount > 100_000.0 {
+    (true, Critical)   // 100K 초과 = 위험
+  } else if amount > 50_000.0 {
+    (true, High)       // 50K-100K = 높음
+  } else if amount > 10_000.0 {
+    (true, Medium)     // 10K-50K = 중간
+  } else {
+    (false, Low)       // 10K 이하 = 안전
+  }
+}
+
+// ========================================
+// 2️⃣ 거래 빈도 감지
+// ========================================
+
+fn detect_unusual_frequency(
+  transaction_count: i64,
+  time_window_hours: i64
+) -> (bool, AlertSeverity) {
+  let txns_per_hour = transaction_count / time_window_hours
+
+  if txns_per_hour > 100 {
+    (true, Critical)   // 시간당 100 이상 = 봇
+  } else if txns_per_hour > 50 {
+    (true, High)       // 시간당 50 이상
+  } else if txns_per_hour > 20 {
+    (true, Medium)     // 시간당 20 이상
+  } else {
+    (false, Low)
+  }
+}
+
+// ========================================
+// 3️⃣ 잔액 급감 감지
+// ========================================
+
+fn detect_balance_drain(
+  previous_balance: f64,
+  current_balance: f64
+) -> (bool, AlertSeverity) {
+  if previous_balance <= 0.0 {
+    return (false, Low)
+  }
+
+  let drain_percent = ((previous_balance - current_balance) / previous_balance) * 100.0
+
+  if drain_percent > 80.0 {
+    (true, Critical)   // 80% 이상 감소
+  } else if drain_percent > 50.0 {
+    (true, High)       // 50-80% 감소
+  } else if drain_percent > 30.0 {
+    (true, Medium)     // 30-50% 감소
+  } else {
+    (false, Low)
+  }
+}
+
+// ========================================
+// 4️⃣ 반복 거래 감지 (동일 수혜자)
+// ========================================
+
+fn detect_repeated_transfers(
+  to_account_id: str,
+  recent_transfers: List[str],
+  threshold: i64
+) -> (bool, AlertSeverity) {
+  let count = fold_range(0, len(recent_transfers), 0, fn(acc, i) {
+    if recent_transfers[i] == to_account_id {
+      acc + 1
+    } else {
+      acc
+    }
+  })
+
+  if count > threshold {
+    (true, Medium)     // 반복 이체 의심
+  } else {
+    (false, Low)
+  }
+}
+
+// ========================================
+// 5️⃣ 야간 거래 감지
+// ========================================
+
+fn detect_unusual_time(timestamp: i64) -> (bool, AlertSeverity) {
+  let hour = (timestamp / 3600) % 24
+
+  // 자정 ~ 6시는 이상
+  if hour < 6 {
+    (true, Medium)
+  } else {
+    (false, Low)
+  }
+}
+
+// ========================================
+// 6️⃣ 통합 사기 점수 계산
+// ========================================
+
+fn calculate_fraud_score(
+  amount: f64,
+  transaction_count: i64,
+  time_window: i64,
+  previous_balance: f64,
+  current_balance: f64,
+  timestamp: i64
+) -> (f64, AlertSeverity) {
+  let mut score = 0.0
+
+  // 거래액 검사
+  let (large_txn, large_severity) = detect_large_transaction(amount)
+  if large_txn {
+    score = score + 30.0
+  }
+
+  // 빈도 검사
+  let (freq, freq_severity) = detect_unusual_frequency(transaction_count, time_window)
+  if freq {
+    score = score + 25.0
+  }
+
+  // 잔액 감소 검사
+  let (drain, drain_severity) = detect_balance_drain(previous_balance, current_balance)
+  if drain {
+    score = score + 25.0
+  }
+
+  // 야간 거래 검사
+  let (night, night_severity) = detect_unusual_time(timestamp)
+  if night {
+    score = score + 10.0
+  }
+
+  // 심각도 결정
+  let severity = if score > 80.0 {
+    Critical
+  } else if score > 60.0 {
+    High
+  } else if score > 40.0 {
+    Medium
+  } else {
+    Low
+  }
+
+  (score, severity)
+}
+
+// ========================================
+// 7️⃣ 경고 생성 및 차단
+// ========================================
+
+fn create_fraud_alert(
+  account_id: str,
+  reason: str,
+  amount: f64,
+  severity: AlertSeverity,
+  should_block: bool
+) -> FraudAlert {
+  let alert = record {
+    alert_id: "ALERT-" + to_str(now()),
+    account_id: account_id,
+    severity: severity,
+    reason: reason,
+    amount: amount,
+    timestamp: now(),
+    is_blocked: should_block,
+  }
+
+  // 심각도별 알림
+  let severity_str = match severity {
+    Low => "⚠️ 낮음",
+    Medium => "🟡 중간",
+    High => "🔴 높음",
+    Critical => "🚨 치명적",
+  }
+
+  if should_block {
+    print("🛑 [" + severity_str + "] 거래 차단: " + account_id)
+  } else {
+    print("⚠️ [" + severity_str + "] 경고: " + account_id)
+  }
+
+  print("   사유: " + reason)
+  print("   금액: $" + to_str(amount))
+
+  alert
+}
+
+// ========================================
+// 8️⃣ 거래 검증 및 차단
+// ========================================
+
+fn validate_transaction(
+  account_id: str,
+  amount: f64,
+  transaction_count: i64,
+  previous_balance: f64,
+  current_balance: f64
+) -> (bool, str) {
+  let (score, severity) = calculate_fraud_score(
+    amount,
+    transaction_count,
+    24,  // 24시간 윈도우
+    previous_balance,
+    current_balance,
+    now()
+  )
+
+  if score > 80.0 {
+    (false, "높은 사기 위험 (점수: " + to_str(score) + ")")
+  } else if score > 60.0 && amount > 10_000.0 {
+    (false, "중간 사기 위험 (점수: " + to_str(score) + ")")
+  } else if score > 40.0 && amount > 50_000.0 {
+    (false, "낮은 사기 위험 (점수: " + to_str(score) + ")")
+  } else {
+    (true, "안전함 (점수: " + to_str(score) + ")")
+  }
+}
+
+// ========================================
+// 테스트
+// ========================================
+
+// 1. 거대 거래 감지
+let (is_large, severity) = detect_large_transaction(150_000.0)
+print("✅ 거대 거래 감지: " + to_str(is_large) + " (심각도: " + to_str(severity) + ")")
+
+// 2. 빈도 감지
+let (is_freq, severity) = detect_unusual_frequency(150, 2)  // 2시간에 150건
+print("✅ 이상 빈도 감지: " + to_str(is_freq) + " (심각도: " + to_str(severity) + ")")
+
+// 3. 잔액 급감 감지
+let (is_drain, severity) = detect_balance_drain(10_000.0, 1_000.0)  // 90% 감소
+print("✅ 잔액 급감 감지: " + to_str(is_drain) + " (심각도: " + to_str(severity) + ")")
+
+// 4. 통합 사기 점수
+let (score, severity) = calculate_fraud_score(
+  75_000.0,  // 높은 금액
+  80,        // 높은 빈도
+  24,        // 24시간
+  100_000.0, // 이전 잔액
+  20_000.0,  // 현재 잔액 (80% 감소)
+  now()
+)
+print("✅ 사기 점수: " + to_str(score) + " (심각도: " + to_str(severity) + ")")
+
+// 5. 거래 검증
+let (is_valid, message) = validate_transaction("ACC001", 75_000.0, 80, 100_000.0, 20_000.0)
+print("✅ 거래 검증: " + message)

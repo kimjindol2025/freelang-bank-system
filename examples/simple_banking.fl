@@ -1,0 +1,179 @@
+// 🏦 FreeLang Bank System - Simple Banking Example
+// 간단한 뱅킹 예제
+
+print("🏦 FreeLang Bank System - Simple Example")
+print("=" * 50)
+print("")
+
+// ========================================
+// 1️⃣ 계좌 생성
+// ========================================
+
+print("1️⃣ 계좌 생성")
+print("-" * 50)
+
+// 당좌 예금 (Checking)
+let checking = record {
+  id: "CHK-001",
+  owner: "Alice",
+  balance: 0.0,
+  type: "Checking",
+  rate: 0.0,
+}
+
+// 저축 예금 (Savings)
+let savings = record {
+  id: "SAV-001",
+  owner: "Bob",
+  balance: 0.0,
+  type: "Savings",
+  rate: 2.5,
+}
+
+print("✅ Alice의 당좌 예금: " + checking.id)
+print("✅ Bob의 저축 예금: " + savings.id)
+print("")
+
+// ========================================
+// 2️⃣ 입금
+// ========================================
+
+print("2️⃣ 입금")
+print("-" * 50)
+
+// Alice 입금
+let checking = record {
+  id: checking.id,
+  owner: checking.owner,
+  balance: 1500.0,
+  type: checking.type,
+  rate: checking.rate,
+}
+print("✅ Alice 입금: $1,500")
+print("   잔액: $" + to_str(checking.balance))
+
+// Bob 입금
+let savings = record {
+  id: savings.id,
+  owner: savings.owner,
+  balance: 5000.0,
+  type: savings.type,
+  rate: savings.rate,
+}
+print("✅ Bob 입금: $5,000")
+print("   잔액: $" + to_str(savings.balance))
+print("")
+
+// ========================================
+// 3️⃣ 출금
+// ========================================
+
+print("3️⃣ 출금")
+print("-" * 50)
+
+// Alice 출금
+let checking = record {
+  id: checking.id,
+  owner: checking.owner,
+  balance: checking.balance - 300.0,
+  type: checking.type,
+  rate: checking.rate,
+}
+print("✅ Alice 출금: $300")
+print("   잔액: $" + to_str(checking.balance))
+print("")
+
+// ========================================
+// 4️⃣ 계좌이체
+// ========================================
+
+print("4️⃣ 계좌이체 (Alice → Bob)")
+print("-" * 50)
+
+let transfer_amount = 200.0
+let transfer_fee = 1.0
+
+// Alice 출금
+let checking = record {
+  id: checking.id,
+  owner: checking.owner,
+  balance: checking.balance - transfer_amount - transfer_fee,
+  type: checking.type,
+  rate: checking.rate,
+}
+
+// Bob 입금
+let savings = record {
+  id: savings.id,
+  owner: savings.owner,
+  balance: savings.balance + transfer_amount,
+  type: savings.type,
+  rate: savings.rate,
+}
+
+print("✅ 이체액: $" + to_str(transfer_amount))
+print("✅ 수수료: $" + to_str(transfer_fee))
+print("")
+print("Alice 잔액: $" + to_str(checking.balance))
+print("Bob 잔액: $" + to_str(savings.balance))
+print("")
+
+// ========================================
+// 5️⃣ 이자 계산
+// ========================================
+
+print("5️⃣ 이자 계산")
+print("-" * 50)
+
+// Bob의 저축 예금 이자 계산
+let daily_interest = savings.balance * (savings.rate / 100.0 / 365.0)
+let monthly_interest = daily_interest * 30.0
+
+print("Bob의 저축 예금:")
+print("  - 잔액: $" + to_str(savings.balance))
+print("  - 이율: " + to_str(savings.rate) + "% APY")
+print("  - 일일 이자: $" + to_str(daily_interest))
+print("  - 월간 이자: $" + to_str(monthly_interest))
+
+let new_balance = savings.balance + monthly_interest
+print("")
+print("1개월 후 잔액: $" + to_str(new_balance))
+print("")
+
+// ========================================
+// 6️⃣ 최종 현황
+// ========================================
+
+print("6️⃣ 최종 잔액")
+print("-" * 50)
+
+print("Alice (Checking):")
+print("  ID: " + checking.id)
+print("  잔액: $" + to_str(checking.balance))
+print("")
+
+print("Bob (Savings):")
+print("  ID: " + savings.id)
+print("  잔액: $" + to_str(new_balance))
+print("")
+
+let total = checking.balance + new_balance
+print("💰 총 자산: $" + to_str(total))
+print("")
+
+// ========================================
+// 7️⃣ 거래 로그
+// ========================================
+
+print("7️⃣ 거래 로그")
+print("-" * 50)
+
+print("[TXN-001] Alice 입금: +$1,500")
+print("[TXN-002] Bob 입금: +$5,000")
+print("[TXN-003] Alice 출금: -$300")
+print("[TXN-004] Alice → Bob 이체: -$200 (수수료 $1)")
+print("[TXN-005] Bob 월간 이자: +$" + to_str(monthly_interest))
+
+print("")
+print("=" * 50)
+print("✅ 예제 완료!")

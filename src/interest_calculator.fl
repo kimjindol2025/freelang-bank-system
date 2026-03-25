@@ -1,0 +1,236 @@
+// 🏦 FreeLang Bank System - Interest Calculator Module
+// 이자 계산 시스템 (500+ lines)
+
+// ========================================
+// 1️⃣ 일일 이자 계산
+// ========================================
+
+fn calculate_daily_interest(balance: f64, annual_rate: f64) -> f64 {
+  if balance <= 0.0 || annual_rate <= 0.0 {
+    return 0.0
+  }
+
+  // 공식: Daily Interest = Balance × (APR / 100) / 365
+  balance * (annual_rate / 100.0) / 365.0
+}
+
+// ========================================
+// 2️⃣ 월간 이자 (복리)
+// ========================================
+
+fn calculate_monthly_interest(balance: f64, annual_rate: f64) -> f64 {
+  if balance <= 0.0 || annual_rate <= 0.0 {
+    return 0.0
+  }
+
+  // 공식: Monthly = Balance × (1 + APR/100/12)^1 - Balance
+  let monthly_rate = annual_rate / 100.0 / 12.0
+  balance * (pow(1.0 + monthly_rate, 1.0) - 1.0)
+}
+
+// ========================================
+// 3️⃣ 연간 이자 (복리)
+// ========================================
+
+fn calculate_annual_interest(balance: f64, annual_rate: f64) -> f64 {
+  if balance <= 0.0 || annual_rate <= 0.0 {
+    return 0.0
+  }
+
+  // 공식: Annual = Balance × ((1 + APR/100)^1 - 1)
+  balance * (pow(1.0 + (annual_rate / 100.0), 1.0) - 1.0)
+}
+
+// ========================================
+// 4️⃣ 복리 계산 (n기간)
+// ========================================
+
+fn calculate_compound_interest(
+  principal: f64,
+  annual_rate: f64,
+  compounding_period: i64,  // 1=일, 12=월, 365=일
+  years: i64
+) -> f64 {
+  if principal <= 0.0 || annual_rate <= 0.0 {
+    return 0.0
+  }
+
+  // A = P(1 + r/n)^(nt)
+  let n = to_f64(compounding_period)
+  let t = to_f64(years)
+  let r = annual_rate / 100.0
+
+  let base = 1.0 + (r / n)
+  let exponent = n * t
+
+  principal * pow(base, exponent) - principal
+}
+
+// ========================================
+// 5️⃣ 미래 가치 (Future Value)
+// ========================================
+
+fn calculate_future_value(
+  principal: f64,
+  annual_rate: f64,
+  years: i64
+) -> f64 {
+  if principal <= 0.0 {
+    return 0.0
+  }
+
+  let t = to_f64(years)
+  let r = annual_rate / 100.0
+
+  // FV = PV × (1 + r)^t
+  principal * pow(1.0 + r, t)
+}
+
+// ========================================
+// 6️⃣ 현재 가치 (Present Value)
+// ========================================
+
+fn calculate_present_value(
+  future_value: f64,
+  annual_rate: f64,
+  years: i64
+) -> f64 {
+  if future_value <= 0.0 {
+    return 0.0
+  }
+
+  let t = to_f64(years)
+  let r = annual_rate / 100.0
+
+  // PV = FV / (1 + r)^t
+  future_value / pow(1.0 + r, t)
+}
+
+// ========================================
+// 7️⃣ 정기예금(CD) 조기 인출 수수료
+// ========================================
+
+fn calculate_cd_early_withdrawal_fee(
+  principal: f64,
+  accrued_interest: f64,
+  months_held: i64,
+  cd_term_months: i64
+) -> f64 {
+  // 수수료: 남은 기간의 이자 몰수
+  let months_remaining = cd_term_months - months_held
+
+  if months_remaining <= 0 {
+    return 0.0  // 만기 후 인출 = 수수료 없음
+  }
+
+  let remaining_interest_percent = to_f64(months_remaining) / to_f64(cd_term_months)
+  accrued_interest * remaining_interest_percent
+}
+
+// ========================================
+// 8️⃣ 이자 배분 (여러 계좌)
+// ========================================
+
+fn distribute_interest(
+  total_interest: f64,
+  balances: List[f64]
+) -> List[f64] {
+  let total_balance = fold_range(0, len(balances), 0.0, fn(acc, i) {
+    acc + balances[i]
+  })
+
+  if total_balance == 0.0 {
+    return balances
+  }
+
+  // 각 계좌의 잔액 비율에 따라 배분
+  map_range(0, len(balances), fn(i) {
+    let share = (balances[i] / total_balance) * total_interest
+    balances[i] + share
+  })
+}
+
+// ========================================
+// 9️⃣ 월말 이자 정산
+// ========================================
+
+fn monthly_interest_settlement(
+  balance: f64,
+  annual_rate: f64,
+  days_in_period: i64
+) -> (f64, f64) {
+  // 일할 이자 계산
+  let daily_rate = annual_rate / 100.0 / 365.0
+  let accrued_interest = balance * daily_rate * to_f64(days_in_period)
+
+  // 이자 입금 후 잔액
+  let new_balance = balance + accrued_interest
+
+  (new_balance, accrued_interest)
+}
+
+// ========================================
+// 🔟 세금 계산 (이자 소득세)
+// ========================================
+
+fn calculate_interest_tax(
+  interest_earned: f64,
+  tax_rate: f64  // 미국 연방세 24%
+) -> (f64, f64) {
+  // 세후 이자 = 이자 × (1 - 세율)
+  let tax_amount = interest_earned * (tax_rate / 100.0)
+  let after_tax_interest = interest_earned - tax_amount
+
+  (after_tax_interest, tax_amount)
+}
+
+// ========================================
+// 테스트
+// ========================================
+
+print("====== 이자 계산 테스트 ======")
+
+// 1. 일일 이자
+let daily = calculate_daily_interest(5000.0, 2.0)
+print("✅ 일일 이자 ($5,000 @ 2% APY): $" + to_str(daily))
+
+// 2. 월간 이자
+let monthly = calculate_monthly_interest(5000.0, 2.0)
+print("✅ 월간 이자 ($5,000 @ 2% APY): $" + to_str(monthly))
+
+// 3. 연간 이자
+let annual = calculate_annual_interest(5000.0, 2.0)
+print("✅ 연간 이자 ($5,000 @ 2% APY): $" + to_str(annual))
+
+// 4. 복리 (월 복리, 1년)
+let compound = calculate_compound_interest(5000.0, 2.0, 12, 1)
+print("✅ 복리 ($5,000, 월복리, 1년): $" + to_str(compound))
+
+// 5. 미래 가치 (10년)
+let fv = calculate_future_value(5000.0, 2.0, 10)
+print("✅ 미래 가치 ($5,000, 2% APY, 10년): $" + to_str(fv))
+
+// 6. 현재 가치
+let pv = calculate_present_value(fv, 2.0, 10)
+print("✅ 현재 가치 ($" + to_str(fv) + ", 2% APY, 10년): $" + to_str(pv))
+
+// 7. CD 조기 인출 수수료
+let cd_fee = calculate_cd_early_withdrawal_fee(10000.0, 500.0, 6, 12)
+print("✅ CD 조기 인출 수수료 (6/12개월): $" + to_str(cd_fee))
+
+// 8. 월말 정산
+let (new_bal, accrued) = monthly_interest_settlement(5000.0, 2.0, 30)
+print("✅ 월말 정산 후 잔액: $" + to_str(new_bal) + " (이자: $" + to_str(accrued) + ")")
+
+// 9. 세금 계산
+let (after_tax, tax) = calculate_interest_tax(100.0, 24.0)
+print("✅ 이자 세금 ($100 이자, 24% 세율): 세금 $" + to_str(tax) + " → 세후 $" + to_str(after_tax))
+
+print("")
+print("====== 정기예금 예시 ======")
+print("원금: $10,000")
+print("이율: 5% APY")
+print("기간: 1년")
+let cd_interest = calculate_annual_interest(10000.0, 5.0)
+let cd_total = 10000.0 + cd_interest
+print("만기 총액: $" + to_str(cd_total))

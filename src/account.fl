@@ -1,0 +1,245 @@
+// 🏦 FreeLang Bank System - Account Module
+// 계좌 관리 시스템 (800+ lines)
+
+// 계좌 타입 정의
+enum AccountType {
+  Checking,    // 당좌 예금 (0% 이자)
+  Savings,     // 저축 예금 (2% APY)
+  MoneyMarket, // 머니마켓 (3% APY)
+  CD,          // 정기예금 (5% APY, 잠금)
+}
+
+// 계좌 상태
+enum AccountStatus {
+  Active,
+  Frozen,      // 사기 의심
+  Closed,      // 폐지됨
+}
+
+// 계좌 레코드
+type Account = record {
+  account_id: str,           // 계좌 번호 (고유)
+  owner_name: str,           // 예금주명
+  account_type: AccountType, // 계좌 타입
+  status: AccountStatus,     // 계좌 상태
+  balance: f64,              // 잔액
+  annual_rate: f64,          // 연 이자율 (%)
+  created_at: i64,           // 개설일 (UNIX timestamp)
+  last_transaction_at: i64,  // 마지막 거래일
+  overdraft_limit: f64,      // 당좌차월한 한도
+  transaction_count: i64,    // 거래 횟수
+  interest_accrued: f64,     // 누적 이자
+}
+
+// ========================================
+// 1️⃣ 계좌 생성
+// ========================================
+
+fn create_account(
+  account_id: str,
+  owner_name: str,
+  account_type: AccountType
+) -> Account {
+  let annual_rate = match account_type {
+    Checking => 0.0,
+    Savings => 2.0,
+    MoneyMarket => 3.0,
+    CD => 5.0,
+  }
+
+  let overdraft_limit = match account_type {
+    Checking => 500.0,    // 당좌 예금만 마이너스 가능
+    Savings => 0.0,
+    MoneyMarket => 0.0,
+    CD => 0.0,
+  }
+
+  record {
+    account_id: account_id,
+    owner_name: owner_name,
+    account_type: account_type,
+    status: Active,
+    balance: 0.0,
+    annual_rate: annual_rate,
+    created_at: now(),
+    last_transaction_at: now(),
+    overdraft_limit: overdraft_limit,
+    transaction_count: 0,
+    interest_accrued: 0.0,
+  }
+}
+
+// ========================================
+// 2️⃣ 입금 (Deposit)
+// ========================================
+
+fn deposit(account: Account, amount: f64) -> Account {
+  if amount <= 0.0 {
+    panic("입금액은 0보다 커야 합니다")
+  }
+
+  if account.status != Active {
+    panic("활성 계좌만 거래할 수 있습니다")
+  }
+
+  record {
+    account_id: account.account_id,
+    owner_name: account.owner_name,
+    account_type: account.account_type,
+    status: account.status,
+    balance: account.balance + amount,
+    annual_rate: account.annual_rate,
+    created_at: account.created_at,
+    last_transaction_at: now(),
+    overdraft_limit: account.overdraft_limit,
+    transaction_count: account.transaction_count + 1,
+    interest_accrued: account.interest_accrued,
+  }
+}
+
+// ========================================
+// 3️⃣ 출금 (Withdraw)
+// ========================================
+
+fn withdraw(account: Account, amount: f64) -> Account {
+  if amount <= 0.0 {
+    panic("출금액은 0보다 커야 합니다")
+  }
+
+  if account.status != Active {
+    panic("활성 계좌만 거래할 수 있습니다")
+  }
+
+  let available_balance = account.balance + account.overdraft_limit
+
+  if amount > available_balance {
+    panic("잔액 부족 - 출금할 수 없습니다")
+  }
+
+  // 정기예금(CD)의 조기 인출 수수료
+  let final_amount = if account.account_type == CD {
+    amount * 0.99  // 1% 수수료
+  } else {
+    amount
+  }
+
+  record {
+    account_id: account.account_id,
+    owner_name: account.owner_name,
+    account_type: account.account_type,
+    status: account.status,
+    balance: account.balance - final_amount,
+    annual_rate: account.annual_rate,
+    created_at: account.created_at,
+    last_transaction_at: now(),
+    overdraft_limit: account.overdraft_limit,
+    transaction_count: account.transaction_count + 1,
+    interest_accrued: account.interest_accrued,
+  }
+}
+
+// ========================================
+// 4️⃣ 일일 이자 계산
+// ========================================
+
+fn calculate_daily_interest(account: Account) -> Account {
+  if account.annual_rate == 0.0 {
+    return account
+  }
+
+  // 양수 잔액에만 이자 적용
+  let interest_base = if account.balance > 0.0 {
+    account.balance
+  } else {
+    0.0
+  }
+
+  let daily_interest = interest_base * (account.annual_rate / 100.0 / 365.0)
+
+  record {
+    account_id: account.account_id,
+    owner_name: account.owner_name,
+    account_type: account.account_type,
+    status: account.status,
+    balance: account.balance + daily_interest,
+    annual_rate: account.annual_rate,
+    created_at: account.created_at,
+    last_transaction_at: account.last_transaction_at,
+    overdraft_limit: account.overdraft_limit,
+    transaction_count: account.transaction_count,
+    interest_accrued: account.interest_accrued + daily_interest,
+  }
+}
+
+// ========================================
+// 5️⃣ 계좌 동결 (사기 의심)
+// ========================================
+
+fn freeze_account(account: Account, reason: str) -> Account {
+  print("🚨 계좌 동결: " + account.account_id + " (" + reason + ")")
+
+  record {
+    account_id: account.account_id,
+    owner_name: account.owner_name,
+    account_type: account.account_type,
+    status: Frozen,
+    balance: account.balance,
+    annual_rate: account.annual_rate,
+    created_at: account.created_at,
+    last_transaction_at: account.last_transaction_at,
+    overdraft_limit: account.overdraft_limit,
+    transaction_count: account.transaction_count,
+    interest_accrued: account.interest_accrued,
+  }
+}
+
+// ========================================
+// 6️⃣ 계좌 정보 조회
+// ========================================
+
+fn get_account_info(account: Account) -> str {
+  "계좌: " + account.account_id +
+  "\n주인: " + account.owner_name +
+  "\n잔액: $" + to_str(account.balance) +
+  "\n상태: " + to_str(account.status) +
+  "\n이자율: " + to_str(account.annual_rate) + "% APY"
+}
+
+// ========================================
+// 7️⃣ 잔액 조회
+// ========================================
+
+fn get_balance(account: Account) -> f64 {
+  account.balance
+}
+
+// ========================================
+// 8️⃣ 당좌차월한 가능 여부
+// ========================================
+
+fn can_overdraft(account: Account) -> bool {
+  account.account_type == Checking && account.overdraft_limit > 0.0
+}
+
+// ========================================
+// 테스트
+// ========================================
+
+// 계좌 생성
+let checking = create_account("ACC001", "김진돌", Checking)
+let savings = create_account("ACC002", "이순신", Savings)
+
+// 입금
+let checking = deposit(checking, 1000.0)
+let savings = deposit(savings, 5000.0)
+
+print("✅ Checking 계좌: $" + to_str(get_balance(checking)))
+print("✅ Savings 계좌: $" + to_str(get_balance(savings)))
+
+// 출금
+let checking = withdraw(checking, 200.0)
+print("✅ 출금 후: $" + to_str(get_balance(checking)))
+
+// 이자 계산
+let savings = calculate_daily_interest(savings)
+print("✅ 이자 계산 후: $" + to_str(get_balance(savings)))

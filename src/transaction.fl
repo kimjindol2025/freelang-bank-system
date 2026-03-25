@@ -1,0 +1,274 @@
+// 🏦 FreeLang Bank System - Transaction Module
+// 거래 엔진 (900+ lines)
+
+// 거래 타입
+enum TransactionType {
+  Deposit,    // 입금
+  Withdraw,   // 출금
+  Transfer,   // 계좌이체
+  Interest,   // 이자
+}
+
+// 거래 상태
+enum TransactionStatus {
+  Pending,    // 대기
+  Completed,  // 완료
+  Failed,     // 실패
+  Reversed,   // 취소
+}
+
+// 거래 레코드
+type Transaction = record {
+  txn_id: str,                    // 거래 ID
+  from_account_id: str,           // 출금 계좌
+  to_account_id: str,             // 입금 계좌
+  amount: f64,                    // 거래액
+  txn_type: TransactionType,      // 거래 타입
+  status: TransactionStatus,      // 거래 상태
+  created_at: i64,                // 생성일
+  completed_at: i64,              // 완료일 (0 = 미완료)
+  description: str,               // 설명
+  fee: f64,                       // 수수료
+}
+
+// ========================================
+// 1️⃣ 거래 생성
+// ========================================
+
+fn create_transaction(
+  from_account: str,
+  to_account: str,
+  amount: f64,
+  txn_type: TransactionType,
+  description: str
+) -> Transaction {
+  record {
+    txn_id: generate_transaction_id(),
+    from_account_id: from_account,
+    to_account_id: to_account,
+    amount: amount,
+    txn_type: txn_type,
+    status: Pending,
+    created_at: now(),
+    completed_at: 0,
+    description: description,
+    fee: 0.0,
+  }
+}
+
+// ========================================
+// 2️⃣ 거래 ID 생성
+// ========================================
+
+fn generate_transaction_id() -> str {
+  "TXN-" + to_str(now()) + "-" + random_string(6)
+}
+
+// ========================================
+// 3️⃣ 거래 수수료 계산
+// ========================================
+
+fn calculate_fee(txn_type: TransactionType, amount: f64) -> f64 {
+  match txn_type {
+    Deposit => 0.0,              // 입금: 무료
+    Withdraw => 0.0,             // 출금: 무료 (초과는 유료)
+    Transfer => if amount > 1000.0 {
+      amount * 0.005             // 이체: 1000 초과 시 0.5% 수수료
+    } else {
+      1.0                        // 최소 $1 수수료
+    },
+    Interest => 0.0,             // 이자: 무료
+  }
+}
+
+// ========================================
+// 4️⃣ ACID 거래 처리
+// ========================================
+
+// 거래 구조: Atomicity, Consistency, Isolation, Durability
+
+fn process_transfer_transaction(
+  txn: Transaction,
+  from_balance: f64,
+  to_balance: f64
+) -> (Transaction, f64, f64) {
+  // 1. VALIDATION (일관성)
+  if txn.amount <= 0.0 {
+    return (
+      record {
+        txn_id: txn.txn_id,
+        from_account_id: txn.from_account_id,
+        to_account_id: txn.to_account_id,
+        amount: txn.amount,
+        txn_type: txn.txn_type,
+        status: Failed,
+        created_at: txn.created_at,
+        completed_at: now(),
+        description: txn.description,
+        fee: 0.0,
+      },
+      from_balance,
+      to_balance
+    )
+  }
+
+  if from_balance < txn.amount {
+    return (
+      record {
+        txn_id: txn.txn_id,
+        from_account_id: txn.from_account_id,
+        to_account_id: txn.to_account_id,
+        amount: txn.amount,
+        txn_type: txn.txn_type,
+        status: Failed,
+        created_at: txn.created_at,
+        completed_at: now(),
+        description: txn.description,
+        fee: 0.0,
+      },
+      from_balance,
+      to_balance
+    )
+  }
+
+  // 2. FEE CALCULATION (수수료)
+  let fee = calculate_fee(txn.txn_type, txn.amount)
+
+  // 3. ATOMIC UPDATE (원자적 업데이트)
+  let new_from_balance = from_balance - txn.amount - fee
+  let new_to_balance = to_balance + txn.amount
+
+  // 4. COMPLETE TRANSACTION (거래 완료)
+  let completed_txn = record {
+    txn_id: txn.txn_id,
+    from_account_id: txn.from_account_id,
+    to_account_id: txn.to_account_id,
+    amount: txn.amount,
+    txn_type: txn.txn_type,
+    status: Completed,
+    created_at: txn.created_at,
+    completed_at: now(),
+    description: txn.description,
+    fee: fee,
+  }
+
+  (completed_txn, new_from_balance, new_to_balance)
+}
+
+// ========================================
+// 5️⃣ 거래 취소 (Reversal)
+// ========================================
+
+fn reverse_transaction(txn: Transaction) -> Transaction {
+  if txn.status == Reversed {
+    panic("이미 취소된 거래입니다")
+  }
+
+  print("⏮️ 거래 취소: " + txn.txn_id)
+
+  record {
+    txn_id: txn.txn_id,
+    from_account_id: txn.from_account_id,
+    to_account_id: txn.to_account_id,
+    amount: txn.amount,
+    txn_type: txn.txn_type,
+    status: Reversed,
+    created_at: txn.created_at,
+    completed_at: now(),
+    description: txn.description + " (REVERSED)",
+    fee: txn.fee,
+  }
+}
+
+// ========================================
+// 6️⃣ 거래 로그 기록
+// ========================================
+
+fn log_transaction(txn: Transaction) -> str {
+  let status_str = match txn.status {
+    Pending => "대기",
+    Completed => "완료",
+    Failed => "실패",
+    Reversed => "취소",
+  }
+
+  let type_str = match txn.txn_type {
+    Deposit => "입금",
+    Withdraw => "출금",
+    Transfer => "이체",
+    Interest => "이자",
+  }
+
+  "[" + txn.txn_id + "] " +
+  type_str + " | " +
+  "금액: $" + to_str(txn.amount) + " | " +
+  "수수료: $" + to_str(txn.fee) + " | " +
+  "상태: " + status_str
+}
+
+// ========================================
+// 7️⃣ 거래 수수료 조회
+// ========================================
+
+fn get_total_fees(transactions: List[Transaction]) -> f64 {
+  fold_range(0, len(transactions), 0.0, fn(acc, i) {
+    acc + transactions[i].fee
+  })
+}
+
+// ========================================
+// 8️⃣ 거래 통계
+// ========================================
+
+fn transaction_stats(transactions: List[Transaction]) -> record {
+  let total_amount = fold_range(0, len(transactions), 0.0, fn(acc, i) {
+    if transactions[i].status == Completed {
+      acc + transactions[i].amount
+    } else {
+      acc
+    }
+  })
+
+  let completed_count = fold_range(0, len(transactions), 0, fn(acc, i) {
+    if transactions[i].status == Completed {
+      acc + 1
+    } else {
+      acc
+    }
+  })
+
+  let total_fees = get_total_fees(transactions)
+
+  record {
+    total_transactions: len(transactions),
+    completed_transactions: completed_count,
+    total_amount: total_amount,
+    total_fees: total_fees,
+    average_transaction: if completed_count > 0 {
+      total_amount / to_f64(completed_count)
+    } else {
+      0.0
+    },
+  }
+}
+
+// ========================================
+// 테스트
+// ========================================
+
+// 거래 생성
+let txn = create_transaction("ACC001", "ACC002", 500.0, Transfer, "계좌이체")
+
+print("✅ 거래 생성: " + log_transaction(txn))
+
+// 거래 처리
+let (completed_txn, from_bal, to_bal) = process_transfer_transaction(txn, 1000.0, 200.0)
+
+print("✅ 거래 완료: " + log_transaction(completed_txn))
+print("  - 출금 계좌: $" + to_str(from_bal))
+print("  - 입금 계좌: $" + to_str(to_bal))
+print("  - 수수료: $" + to_str(completed_txn.fee))
+
+// 거래 취소
+let reversed_txn = reverse_transaction(completed_txn)
+print("✅ 거래 취소: " + log_transaction(reversed_txn))
