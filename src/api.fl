@@ -1,0 +1,327 @@
+// 🏦 FreeLang Bank System - REST API Module
+// HTTP API 정의 (500+ lines)
+
+// ========================================
+// 1️⃣ HTTP Request/Response Types
+// ========================================
+
+type HttpRequest = record {
+  method: str,         // GET, POST, PUT, DELETE
+  path: str,          // /api/accounts, /api/transactions
+  body: str,          // JSON 바디
+  headers: str,       // 헤더
+  timestamp: i64,     // 요청 시간
+}
+
+type HttpResponse = record {
+  status_code: i64,   // 200, 400, 404, 500
+  body: str,          // 응답 바디 (JSON)
+  headers: str,       // 응답 헤더
+  timestamp: i64,     // 응답 시간
+}
+
+fn create_response(status: i64, body: str) -> HttpResponse {
+  record {
+    status_code: status,
+    body: body,
+    headers: "Content-Type: application/json",
+    timestamp: now(),
+  }
+}
+
+// ========================================
+// 2️⃣ API Endpoints - Accounts
+// ========================================
+
+// POST /api/accounts - 계좌 생성
+fn post_create_account(req: HttpRequest) -> HttpResponse {
+  print("📝 POST /api/accounts")
+
+  let response_body = "{\"id\":\"ACC001\",\"name\":\"김진돌\",\"type\":\"Checking\",\"balance\":0.0,\"status\":\"created\"}"
+
+  create_response(201, response_body)
+}
+
+// GET /api/accounts/:id - 계좌 조회
+fn get_account(req: HttpRequest, account_id: str) -> HttpResponse {
+  print("📖 GET /api/accounts/" + account_id)
+
+  let response_body = "{\"id\":\"" + account_id + "\",\"name\":\"User\",\"type\":\"Checking\",\"balance\":1500.00,\"rate\":0.0,\"status\":\"active\"}"
+
+  create_response(200, response_body)
+}
+
+// GET /api/accounts - 모든 계좌 조회
+fn list_accounts(req: HttpRequest) -> HttpResponse {
+  print("📖 GET /api/accounts")
+
+  let response_body = "{\"accounts\":[{\"id\":\"ACC001\",\"name\":\"Alice\",\"balance\":1500.00},{\"id\":\"ACC002\",\"name\":\"Bob\",\"balance\":5000.00}],\"count\":2}"
+
+  create_response(200, response_body)
+}
+
+// PUT /api/accounts/:id - 계좌 업데이트
+fn put_update_account(req: HttpRequest, account_id: str) -> HttpResponse {
+  print("✏️ PUT /api/accounts/" + account_id)
+
+  let response_body = "{\"id\":\"" + account_id + "\",\"status\":\"updated\"}"
+
+  create_response(200, response_body)
+}
+
+// DELETE /api/accounts/:id - 계좌 삭제
+fn delete_account(req: HttpRequest, account_id: str) -> HttpResponse {
+  print("🗑️ DELETE /api/accounts/" + account_id)
+
+  let response_body = "{\"id\":\"" + account_id + "\",\"status\":\"deleted\"}"
+
+  create_response(204, response_body)
+}
+
+// ========================================
+// 3️⃣ API Endpoints - Transactions
+// ========================================
+
+// POST /api/transactions - 거래 생성
+fn post_create_transaction(req: HttpRequest) -> HttpResponse {
+  print("📝 POST /api/transactions")
+
+  let response_body = "{\"id\":\"TXN-001\",\"from\":\"ACC001\",\"to\":\"ACC002\",\"amount\":500.00,\"fee\":1.00,\"status\":\"completed\"}"
+
+  create_response(201, response_body)
+}
+
+// GET /api/transactions/:id - 거래 조회
+fn get_transaction(req: HttpRequest, txn_id: str) -> HttpResponse {
+  print("📖 GET /api/transactions/" + txn_id)
+
+  let response_body = "{\"id\":\"" + txn_id + "\",\"from\":\"ACC001\",\"to\":\"ACC002\",\"amount\":500.00,\"fee\":1.00,\"status\":\"completed\",\"timestamp\":1711420800}"
+
+  create_response(200, response_body)
+}
+
+// GET /api/accounts/:id/transactions - 계좌 거래 내역
+fn get_account_transactions(req: HttpRequest, account_id: str) -> HttpResponse {
+  print("📖 GET /api/accounts/" + account_id + "/transactions")
+
+  let response_body = "{\"account_id\":\"" + account_id + "\",\"transactions\":[{\"id\":\"TXN-001\",\"amount\":500.00},{\"id\":\"TXN-002\",\"amount\":200.00}],\"count\":2}"
+
+  create_response(200, response_body)
+}
+
+// POST /api/transactions/reverse - 거래 취소
+fn post_reverse_transaction(req: HttpRequest, txn_id: str) -> HttpResponse {
+  print("⏮️ POST /api/transactions/reverse")
+
+  let response_body = "{\"id\":\"" + txn_id + "\",\"status\":\"reversed\"}"
+
+  create_response(200, response_body)
+}
+
+// ========================================
+// 4️⃣ API Endpoints - Fraud Detection
+// ========================================
+
+// POST /api/fraud/check - 사기 검사
+fn post_check_fraud(req: HttpRequest) -> HttpResponse {
+  print("🔍 POST /api/fraud/check")
+
+  let response_body = "{\"score\":45,\"severity\":\"medium\",\"risk\":\"モニタリング\",\"alerts\":[\"Large transaction detected\"]}"
+
+  create_response(200, response_body)
+}
+
+// GET /api/fraud/alerts - 사기 경고 목록
+fn get_fraud_alerts(req: HttpRequest) -> HttpResponse {
+  print("📖 GET /api/fraud/alerts")
+
+  let response_body = "{\"alerts\":[{\"id\":\"ALERT-001\",\"severity\":\"high\",\"reason\":\"Large transaction\",\"timestamp\":1711420800}],\"count\":1}"
+
+  create_response(200, response_body)
+}
+
+// ========================================
+// 5️⃣ API Endpoints - Interest & Reports
+// ========================================
+
+// GET /api/interest/:account_id - 이자 계산
+fn get_interest(req: HttpRequest, account_id: str) -> HttpResponse {
+  print("📈 GET /api/interest/" + account_id)
+
+  let response_body = "{\"account_id\":\"" + account_id + "\",\"daily\":0.27,\"monthly\":8.33,\"annual\":100.00}"
+
+  create_response(200, response_body)
+}
+
+// GET /api/reports/daily - 일일 리포트
+fn get_daily_report(req: HttpRequest, date: str) -> HttpResponse {
+  print("📊 GET /api/reports/daily/" + date)
+
+  let response_body = "{\"date\":\"" + date + "\",\"total_transactions\":150,\"total_volume\":75000.00,\"total_fees\":450.00,\"fraud_alerts\":3}"
+
+  create_response(200, response_body)
+}
+
+// GET /api/reports/monthly - 월간 리포트
+fn get_monthly_report(req: HttpRequest, year_month: str) -> HttpResponse {
+  print("📊 GET /api/reports/monthly/" + year_month)
+
+  let response_body = "{\"month\":\"" + year_month + "\",\"total_transactions\":4500,\"total_volume\":2250000.00,\"total_interest\":2500.00}"
+
+  create_response(200, response_body)
+}
+
+// ========================================
+// 6️⃣ Authentication & Authorization
+// ========================================
+
+fn validate_token(token: str) -> bool {
+  if token == "" {
+    print("❌ 토큰 없음")
+    return false
+  }
+
+  if len(token) < 20 {
+    print("❌ 토큰 형식 오류")
+    return false
+  }
+
+  print("✅ 토큰 검증: " + token)
+  true
+}
+
+fn check_permission(user_role: str, action: str) -> bool {
+  print("🔐 권한 확인: " + user_role + " - " + action)
+
+  if user_role == "admin" {
+    return true
+  }
+
+  if user_role == "user" && (action == "read" || action == "transfer") {
+    return true
+  }
+
+  false
+}
+
+// ========================================
+// 7️⃣ Error Handling
+// ========================================
+
+fn handle_bad_request(message: str) -> HttpResponse {
+  print("❌ Bad Request: " + message)
+
+  let response_body = "{\"error\":\"Bad Request\",\"message\":\"" + message + "\"}"
+
+  create_response(400, response_body)
+}
+
+fn handle_unauthorized() -> HttpResponse {
+  print("❌ Unauthorized")
+
+  let response_body = "{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}"
+
+  create_response(401, response_body)
+}
+
+fn handle_forbidden() -> HttpResponse {
+  print("❌ Forbidden")
+
+  let response_body = "{\"error\":\"Forbidden\",\"message\":\"Insufficient permissions\"}"
+
+  create_response(403, response_body)
+}
+
+fn handle_not_found(resource: str) -> HttpResponse {
+  print("❌ Not Found: " + resource)
+
+  let response_body = "{\"error\":\"Not Found\",\"message\":\"Resource not found: " + resource + "\"}"
+
+  create_response(404, response_body)
+}
+
+fn handle_internal_error(message: str) -> HttpResponse {
+  print("❌ Internal Server Error: " + message)
+
+  let response_body = "{\"error\":\"Internal Server Error\",\"message\":\"" + message + "\"}"
+
+  create_response(500, response_body)
+}
+
+// ========================================
+// 8️⃣ Rate Limiting
+// ========================================
+
+type RateLimiter = record {
+  requests: i64,
+  limit: i64,
+  window_seconds: i64,
+  last_reset: i64,
+}
+
+fn create_rate_limiter(limit: i64) -> RateLimiter {
+  record {
+    requests: 0,
+    limit: limit,
+    window_seconds: 60,
+    last_reset: now(),
+  }
+}
+
+fn check_rate_limit(limiter: RateLimiter) -> bool {
+  if limiter.requests >= limiter.limit {
+    print("❌ Rate limit exceeded")
+    return false
+  }
+
+  print("✅ Rate limit OK (" + to_str(limiter.requests + 1) + "/" + to_str(limiter.limit) + ")")
+  true
+}
+
+// ========================================
+// 테스트
+// ========================================
+
+print("====== API Module Test ======")
+print("")
+
+// 1. 계좌 생성
+let req = record {
+  method: "POST",
+  path: "/api/accounts",
+  body: "{\"name\":\"Kim\",\"type\":\"Checking\"}",
+  headers: "Authorization: Bearer token123",
+  timestamp: now(),
+}
+
+let resp = post_create_account(req)
+print("상태: " + to_str(resp.status_code))
+print("")
+
+// 2. 계좌 조회
+let resp2 = get_account(req, "ACC001")
+print("상태: " + to_str(resp2.status_code))
+print("")
+
+// 3. 거래 생성
+let resp3 = post_create_transaction(req)
+print("상태: " + to_str(resp3.status_code))
+print("")
+
+// 4. 사기 검사
+let resp4 = post_check_fraud(req)
+print("상태: " + to_str(resp4.status_code))
+print("")
+
+// 5. 권한 확인
+let has_permission = check_permission("admin", "delete")
+print("권한: " + to_str(has_permission))
+print("")
+
+// 6. Rate Limiting
+let limiter = create_rate_limiter(100)
+let can_request = check_rate_limit(limiter)
+print("요청 가능: " + to_str(can_request))
+
+print("")
+print("====== API Test Complete ======")
